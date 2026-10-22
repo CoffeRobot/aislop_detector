@@ -1,0 +1,14 @@
+# Never commit labeled data, exports, credentials, or build output
+data/
+exports/
+.env
+.env.*
+*.local
+
+# Build output
+dist/
+node_modules/
+*.zip
+
+# Model files never belong in git (downloaded/cached by the browser at runtime)
+*.gguf

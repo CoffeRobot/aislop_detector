@@ -1,0 +1,46 @@
+name: Bug report
+description: Report a defect in the extension — scoring, probability bars, blur/stamp, options, or model behavior.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One issue per submission. Keep answers concise, reproducible, and grounded
+        in observed evidence. Do not speculate beyond the evidence; if a section
+        cannot be answered from available evidence, respond with exactly
+        `NOT_ENOUGH_INFO`.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One-sentence statement of what is broken, based only on observed evidence.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Shortest deterministic path — include Brave version, the extension's load state, and the X surface (timeline / profile).
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Concrete reference — TAXONOMY.md, PLAN.md, or a known-good run.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Observed result only — include the per-class probabilities where relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs / evidence
+      description: Redact handles and post text before pasting; never paste label exports or private post content.
+    validations:
+      required: false

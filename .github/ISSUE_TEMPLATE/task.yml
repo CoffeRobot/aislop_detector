@@ -1,0 +1,67 @@
+name: Build task
+description: A self-contained unit of work for an implementer (human or coding agent).
+title: "[Task]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This ticket is the implementer's entire context — they may never see the
+        conversation that produced it. Write it so a competent stranger can start
+        from this page alone. Ground every statement in observed evidence; if a
+        section cannot be answered from what you know, write exactly
+        `NOT_ENOUGH_INFO` rather than guessing. One concern per issue.
+        Work-queue labels per AGENTS.md: `status: ready` → `status: claimed` →
+        `status: has-pr`; never set `status: done` yourself. Branch `issue-<n>`,
+        `Fixes #<n>` in the PR body.
+  - type: input
+    id: plan_item
+    attributes:
+      label: Plan item
+      description: Plan item from PLAN.md this ticket implements, e.g. `Implements M1-P2`. Omit only for field-found fixes on an already-shipped item — then cite that item.
+      placeholder: Implements M1-P2
+    validations:
+      required: false
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / goal
+      description: What is broken or missing, and why it matters.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: The concrete result after this work is done — observable behavior, not implementation details.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: |
+        Checklist; each item independently verifiable by the implementer.
+        Example: `- [ ] With the extension loaded unpacked in Brave on x.com, each timeline post renders three probability bars within ~2s`
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: Explicitly out of scope. State it when scope could be overshoot.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and pointers
+      description: File paths, PLAN.md / TAXONOMY.md / GLOSSARY.md pointers, constraints (local-only, no cloud calls), prior art.
+    validations:
+      required: false
+  - type: textarea
+    id: prerequisites
+    attributes:
+      label: Prerequisites / inputs the implementer needs
+      description: Owner-side actions, assets, environment (Brave version), files. State who provides them and when.
+    validations:
+      required: false
