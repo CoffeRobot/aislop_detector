@@ -10,7 +10,8 @@ this is a fresh scaffold under the product-dev workflow, planned before any code
 
 ## Vision
 
-A personal-use, fully local browser extension (Chrome-family MV3, built for and
+X is full of AI slop and populistic things the owner is not interested in; he wants a
+filter. AISlop Detector is a personal-use, fully local browser extension (Chrome-family MV3, built for and
 tested in Brave) that scores every X timeline post with an open-weight decision model
 running in the browser, and shows a **probability bar per class** — `ai_slop`,
 `rubbish`, `genuine` — never a single collapsed verdict. Posts whose dominant class
@@ -33,6 +34,12 @@ only runtime egress is the one-time HuggingFace model download.
   (heuristics). None ships a three-way substance taxonomy with per-class probability
   bars — that is this project's space.
 
+(2026-10-23)
+
+- to-spec review pass against the vault template: Decision Log doors normalized,
+  testing doctrine and problem statement added, v1 surface scope settled — home
+  timelines only (owner decision).
+
 ## Milestones
 
 ### M1 — Scaffold + in-browser decision-model spike · status: active
@@ -47,8 +54,9 @@ MV3 before anything else is built on top.
   constraint); per-post latency measured · todo
 
 ### M2 — Score the timeline · status: todo
-- M2-P1 — Scraper adapter: MutationObserver + `article[data-testid="tweet"]`; SKIP
-  rules per TAXONOMY (promoted, <5 words, non-text) · todo
+- M2-P1 — Scraper adapter: MutationObserver + `article[data-testid="tweet"]` on
+  the home timelines (For You + Following), top-level posts only (quoted text judged
+  as part of the post); SKIP rules per TAXONOMY (promoted, <5 words, non-text) · todo
 - M2-P2 — Decision model wiring: TAXONOMY-driven prompt, class-token softmax →
   per-class probabilities; model + prompt versioned, not inlined · todo
 - M2-P3 — Probability bars UI: one filled bar per class on every scored post;
@@ -77,18 +85,18 @@ No model/prompt/threshold tuning before this milestone's evidence exists.
 
 ## Decision Log
 
-Settled in the 2026-10-22 grill session.
+Settled in the 2026-10-22 grill session; amended in the 2026-10-23 to-spec review.
 
 - 2026-10-22 — Goal: learning project (owner implements the decision-model core
   himself), with a usable personal tool as the acceptance bar; publishing is a
-  post-hoc option. (owner-set)
+  post-hoc option. (owner-set; one-way)
 - 2026-10-22 — Three classes `ai_slop`, `rubbish`, `genuine`; taxonomy expandable via
   new class tokens + TAXONOMY.md entries. Tie-break: substance wins (hype thread →
   `rubbish`); SKIP path for short/promoted/non-text posts. (two-way)
 - 2026-10-22 — UI shows a probability bar per class — never collapsed to a single
-  verdict. (owner-set; do not reopen)
+  verdict. (owner-set; one-way — do not reopen)
 - 2026-10-22 — Blur + stamp when dominant ∈ {ai_slop, rubbish} ∧ p ≥ 70% (slider);
-  stamp image = Dr. Slump poop PNG (owner-chosen). (mechanism two-way; image owner-set)
+  stamp image = Dr. Slump poop PNG. (two-way mechanism; image owner-set)
 - 2026-10-22 — Fully in-browser model via wllama (GGUF from HuggingFace, cached);
   no cloud APIs; localhost LM Studio bridge is a possible later option, v1 non-goal.
   (one-way for v1)
@@ -96,13 +104,23 @@ Settled in the 2026-10-22 grill session.
   default 1.2B-Instruct Q4 pending spike + gold-set evidence; 350M/2.6B as profiles.
   (two-way, evidence-gated)
 - 2026-10-22 — Ground truth = owner-confirmed labels via confirm/correct UI from the
-  start; ≥50 labels form the gold set that gates all tuning. (owner-set)
+  start; ≥50 labels form the gold set that gates all tuning. (owner-set; one-way)
 - 2026-10-22 — Stamp art is copyright Dr. Slump (fan-sourced): personal use only;
   must be replaced before any public release. (one-way)
 - 2026-10-22 — Personal-use scope, Brave first; no store listing planned. (two-way)
 - 2026-10-22 — Repo kit follows the product-dev workflow: issue-first, one PR per
   concern, docs-only kit commits; ops direct (boilerplate delegable to
-  workspace-coder, core owner-implemented). (workflow)
+  workspace-coder, core owner-implemented). (two-way)
+- 2026-10-23 — v1 scores the home timelines only: For You + Following, top-level
+  posts (quoted text judged as part of the post). Other surfaces — profile pages,
+  threads/replies, search — are added only after the timeline flow works end-to-end.
+  (owner-set; two-way sequencing)
+- 2026-10-23 — Testing doctrine: pure logic (probability extraction, thresholds,
+  queue, SKIP rules) is unit-tested at the classifier-adapter seam with vitest; DOM
+  scraping gets no selector tests — proven only by manual end-to-end evidence in
+  Brave on the real timeline (X markup churns; selector tests rot); model-behavior
+  claims are proven by real per-class probabilities from real runs in PR evidence.
+  Every ticket carries its own explicit Testing Decisions section. (two-way)
 
 ## Open Questions
 
