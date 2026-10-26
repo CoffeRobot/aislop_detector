@@ -83,6 +83,30 @@ No model/prompt/threshold tuning before this milestone's evidence exists.
   each justified against the gold set; `ai_slop` ↔ `rubbish` confusion is the expected
   trouble spot · todo
 
+## Ticket Registry
+
+Plan IDs are the ticket names (`issue-1 … issue-N`), assigned once, in plan order,
+and never renumbered; GitHub's numbers are internal keys (rules: AGENTS.md → Ticket
+numbering). This registry is the single source of the plan ID ↔ GitHub number mapping.
+
+| plan ID | GitHub | ticket | state |
+|---|---|---|---|
+| issue-1 | #1 | M1-P1 scaffold | merged (PR #20, 2026-10-26) |
+| issue-2 | #2 | M1-P2 wllama spike | open |
+| issue-3 | #14 | M2 tracer: paste-a-post harness | open |
+| issue-4 | #15 | M2 tracer: first visible post scored | open |
+| issue-5 | #16 | M2 tracer: whole timeline async | open |
+| issue-6 | #17 | M3 tracer: blur + stamp + green pill | open |
+| issue-7 | #18 | M3 tracer: options page | open |
+| issue-8 | #19 | M3 tracer: confirm/correct → JSONL export | open |
+| issue-9 | #12 | M4-P1a eval tooling | open |
+| issue-10 | #13 | M4-P1b gold set v1 | open |
+| issue-11 | #21 | Field: custom extension icon | merged (PR #22, 2026-10-26) |
+
+Next free plan ID: `issue-12`. Historical exception: the issue-11 work ran on branch
+`issue-21` under the old numbering; the branch name is left as-is. The superseded
+first-cut issues (GitHub #3–#11, never given plan IDs) are removed in this cleanup.
+
 ## Decision Log
 
 Settled in the 2026-10-22 grill session; amended in the 2026-10-23 to-spec review.
@@ -141,6 +165,5 @@ Domain language lives in `GLOSSARY.md` at the repo root.
 
 ## Done Archive
 
-(nothing merged yet)
-
-- —
+- issue-1 — M1-P1 scaffold (merged via PR #20, 2026-10-26)
+- issue-11 — Field: custom extension icon (merged via PR #22, 2026-10-26)

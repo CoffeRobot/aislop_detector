@@ -16,11 +16,29 @@ direction wins over both.
   and stop — never guess or silently invent requirements.
 - Before starting work, comment on the issue saying you are taking it and from which
   commit, and set the label `status: claimed`. Then create branch `issue-<n>` from the
-  default branch. Skip the issue if it already carries `status: claimed`,
+  default branch — `<n>` is the ticket's plan ID, not its GitHub number (see
+  Ticket numbering). Skip the issue if it already carries `status: claimed`,
   `status: has-pr`, or `status: done`, or if an open PR references it.
-- One issue = one branch = one PR. Reference the issue with `Fixes #<n>` in the PR body.
+- One issue = one branch = one PR. Reference the issue with `Fixes #<github-number>`
+  in the PR body (GitHub's number is needed for auto-close; the ticket's name is its
+  plan ID — see Ticket numbering).
 - Blocked for more than ~15 minutes on anything: comment with the exact blocker and
   what you tried, then stop. Never work around missing inputs by inventing data.
+
+## Ticket numbering
+
+- Plan IDs `issue-1 … issue-N` are the ticket names; GitHub's own numbers are internal
+  keys nobody plans around. GitHub assigns them automatically from one counter shared
+  by issues and PRs, never renumbers, and never reuses a number — so PR numbers show
+  up as gaps in the issue list and the two sequences drift apart. This is platform
+  behavior; plan around plan IDs only.
+- PLAN.md's Ticket Registry is the single source of the plan ID ↔ GitHub number
+  mapping and of the next free plan ID. When cutting a new ticket: take the next
+  free plan ID from the registry, title the issue `issue-N — <summary>`, and add the
+  row to the registry.
+- Branches are named after the plan ID (`issue-N`), and PRs are titled
+  `issue-N: <summary>`. GitHub's number appears only in `Fixes #<github-number>`,
+  where auto-close requires it.
 
 ## What this repo is
 
