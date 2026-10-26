@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "test": "vitest run"
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.30",
