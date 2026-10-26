@@ -107,6 +107,9 @@ Settled in the 2026-10-22 grill session; amended in the 2026-10-23 to-spec revie
   start; ≥50 labels form the gold set that gates all tuning. (owner-set; one-way)
 - 2026-10-22 — Stamp art is copyright Dr. Slump (fan-sourced): personal use only;
   must be replaced before any public release. (one-way)
+- 2026-10-26 — Extension icon art `assets/poo.png` is owner-supplied, assumed same
+  Dr. Slump provenance as the stamp art: personal use only; replaced together with
+  the stamp before any public release. (one-way)
 - 2026-10-22 — Personal-use scope, Brave first; no store listing planned. (two-way)
 - 2026-10-22 — Repo kit follows the product-dev workflow: issue-first, one PR per
   concern, docs-only kit commits; ops direct (boilerplate delegable to
