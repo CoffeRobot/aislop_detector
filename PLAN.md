@@ -94,7 +94,7 @@ numbering). This registry is the single source of the plan ID ↔ GitHub number 
 |---|---|---|---|
 | issue-1 | #1 | M1-P1 scaffold | merged (PR #20, 2026-10-26) |
 | issue-2 | #2 | M1-P2 local validation: d1 full-logit vs LFM2.5 chat top-k | open |
-| issue-3 | #14 | M2 tracer: paste-a-post harness | open |
+| issue-3 | #14 | M2 tracer: paste-a-post harness (in-app integration of issue-2's validated path) | open |
 | issue-4 | #15 | M2 tracer: first visible post scored | open |
 | issue-5 | #16 | M2 tracer: whole timeline async | open |
 | issue-6 | #17 | M3 tracer: blur + stamp + green pill | open |
