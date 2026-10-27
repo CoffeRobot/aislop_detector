@@ -42,16 +42,17 @@ only runtime egress is the one-time HuggingFace model download.
 
 ## Milestones
 
-### M1 — Scaffold + in-browser decision-model spike · status: active
-The gate milestone: proves the model runs and yields per-class probabilities inside
-MV3 before anything else is built on top.
+### M1 — Scaffold + decision-model validation spike · status: active
+The gate milestone: proves the decision pattern yields per-class probabilities before
+anything else is built on top. In-browser/MV3 proof moved to the in-app slice (M2).
 
 - M1-P1 — Repo scaffold: Vite + CRXJS + TypeScript + vitest; loads unpacked in Brave;
   module layout (scraper adapter isolated behind one file) · todo
-- M1-P2 — wllama decision spike: LFM2.5-1.2B-Instruct Q4 GGUF loaded from HuggingFace
-  in an MV3 offscreen document; constrained class-token choice with logit access
-  verified; WebGPU vs WASM-SIMD behavior in Brave documented (incl. COOP/COEP
-  constraint); per-post latency measured · todo
+- M1-P2 — local validation spike (issue-2, split per owner direction 2026-10-27): both
+  readout paths proved in a minimal local harness — (A) d1 decision model with
+  per-option probabilities from full logits, (B) LFM2.5-1.2B-Instruct chat + top-k
+  logprobs; full-vs-top-k difference quantified; per-post latency measured; path +
+  model recommendation recorded (pending gold set). Findings → `docs/spike-wllama.md` · todo
 
 ### M2 — Score the timeline · status: todo
 - M2-P1 — Scraper adapter: MutationObserver + `article[data-testid="tweet"]` on
@@ -92,7 +93,7 @@ numbering). This registry is the single source of the plan ID ↔ GitHub number 
 | plan ID | GitHub | ticket | state |
 |---|---|---|---|
 | issue-1 | #1 | M1-P1 scaffold | merged (PR #20, 2026-10-26) |
-| issue-2 | #2 | M1-P2 wllama spike | open |
+| issue-2 | #2 | M1-P2 local validation: d1 full-logit vs LFM2.5 chat top-k | open |
 | issue-3 | #14 | M2 tracer: paste-a-post harness | open |
 | issue-4 | #15 | M2 tracer: first visible post scored | open |
 | issue-5 | #16 | M2 tracer: whole timeline async | open |
@@ -151,9 +152,10 @@ Settled in the 2026-10-22 grill session; amended in the 2026-10-23 to-spec revie
 
 ## Open Questions
 
-- wllama's exact logit/decision API surface inside an MV3 offscreen document, and
-  WebGPU behavior in Brave (incl. COOP/COEP multi-thread constraint) — spike M1-P2
-  answers before model size commits.
+- wllama's logit/decision API surface — full logits via the d1 decision-model path vs
+  the top-k logprob window via the chat path — issue-2 answers locally, before any
+  model-size or path commitment. In-browser MV3/offscreen behavior (WebGPU vs
+  WASM-SIMD in Brave, COOP/COEP) is proven by the in-app slice.
 - GitHub remote creation (CoffeRobot org, private repo) — Alessandro decides when
   first code lands; until then the local repo is the source of truth.
 - Whether the LM Studio localhost bridge is worth adding after v1 — explicit v1
