@@ -46,6 +46,10 @@ python3 spike/run_path_a.py LiquidAI/d1-omni-600M-GGUF:Q8_0 -b 4096 -ub 4096
 
 # Path B — LFM2.5-1.2B-Instruct chat + top-k logprobs
 python3 spike/run_path_b.py LiquidAI/LFM2.5-1.2B-Instruct-GGUF:Q4_K_M
+
+# Path A against a running Ollama instead (vendored llama.cpp needs d1
+# decision support — verified on Ollama 0.40.12; models: `d1`, `d1-omni`)
+SPIKE_BASE_URL=http://<ollama-host>:11434 python3 spike/run_path_a.py d1-omni:latest
 ```
 
 `spike/` is throwaway harness code (see the doc); it is not part of the extension.

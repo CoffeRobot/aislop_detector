@@ -2,6 +2,9 @@
 # TAXONOMY.md v1 (2026-10-22) — the taxonomy file remains the source of truth.
 import json, os, subprocess, time, urllib.request
 
+# Set SPIKE_BASE_URL (e.g. http://172.30.32.1:11434) to target a running
+# Ollama instead of starting llama-server locally.
+
 # criteria text mirrors TAXONOMY.md v1 definitions (abridged for prompt size)
 CRITERIA = {
     "ai_slop": "Machine-generated filler: LLM cadence tells, generic advice, listicle padding, no personal anchor.",
@@ -30,9 +33,10 @@ def load_posts():
         return [json.loads(line) for line in f if line.strip()]
 
 
-def post_json(port, path, body):
+def post_json(port, path, body, base=None):
+    root = base or f"http://127.0.0.1:{port}"
     req = urllib.request.Request(
-        f"http://127.0.0.1:{port}{path}", json.dumps(body).encode(), {"Content-Type": "application/json"}
+        f"{root}{path}", json.dumps(body).encode(), {"Content-Type": "application/json"}
     )
     with urllib.request.urlopen(req, timeout=600) as r:
         return json.load(r)

@@ -114,6 +114,51 @@ Server model-load times measured: d1-3B ≈ 13 s, 1.2B-Instruct ≈ 1.7 s (page 
 warm). d1-3B at ~5.5 s/post on CPU is the main integration risk — but M2's scoring
 queue tolerates late scores, and levers exist (d1-2B below, prefix caching, quant).
 
+## Cross-check: same decision path on the owner's Windows Ollama (2026-10-28)
+
+The owner runs Ollama 0.40.12 on the Windows host (reached from WSL2 over the LAN;
+hardware specs not yet recorded — warm latencies suggest notably faster hardware
+than the WSL CPU side). Ollama vendors llama.cpp with the d1 decision support and
+serves the same `/v1/systemone` endpoint, so **llama-server is not required to run
+Path A** — an Ollama install with the `d1-omni` model works out of the box.
+Run mode: `SPIKE_BASE_URL=http://<host>:11434 python3 spike/run_path_a.py d1-omni:latest`.
+
+**d1-omni via Ollama** (warm ~0.18–0.25 s; cold reload ≈ 24 s after Ollama's
+keep-alive expiry):
+
+| post | ai_slop | rubbish | genuine | top |
+|---|---|---|---|---|
+| slop_listicle | 0.326 | 0.180 | **0.494** | genuine ✗ |
+| engagement_bait | 0.153 | 0.150 | **0.697** | genuine ✗ |
+| firsthand | 0.326 | 0.247 | **0.427** | genuine (weak) |
+| bot_hype_thread | 0.332 | 0.250 | **0.418** | genuine ✗ |
+
+Same flattening-to-genuine failure as the WSL llama-server run (probabilities match
+within backend/numerical variation) — the rejection of d1-omni-600M is
+engine-independent. Latency is ~3× better than WSL (~0.2 s vs ~0.75 s warm).
+
+**d3 via Ollama** — the owner also pulled `d3:latest` from the Ollama registry: a
+4.8B Q8_0 decision-capable model of the **qwen35** family (not a Liquid d1/LFM
+model). Accuracy is the best measured in the whole spike:
+
+| post | ai_slop | rubbish | genuine | top | ms (warm) |
+|---|---|---|---|---|---|
+| slop_listicle | **0.598** | 0.392 | 0.010 | ai_slop ✓ | ~21000 |
+| engagement_bait | 0.042 | **0.950** | 0.008 | rubbish ✓ | ~19200 |
+| firsthand | 0.004 | 0.006 | **0.990** | genuine ✓ | ~19200 |
+| bot_hype_thread | 0.272 | **0.722** | 0.006 | rubbish ✓ (tie-break correct!) | ~19200 |
+
+It is the only model that classifies the TAXONOMY tie-break post correctly (d1-3B
+called it a near-tie leaning ai_slop). But: ~19 s/post warm, ~100 s first load,
+5.8 GB of weights — unusable for a timeline and impossible for in-browser wllama
+(way outside any MV3 memory budget, and outside the plan's d1/LFM model family).
+Kept as a quality reference point, not a candidate profile.
+
+**Path B via Ollama:** this Ollama build does expose `logprobs`/`top_logprobs` in its
+OpenAI-compat chat API, but `LFM2.5-1.2B-Instruct` is not in the Ollama registry —
+Path B stays on llama-server unless the model is imported via Modelfile from the
+HF GGUF.
+
 ## Recommendation (pending gold-set confirmation, M4)
 
 - **Path: A — d1 decision model via the systemone/decision API.** Per-option
@@ -131,6 +176,11 @@ queue tolerates late scores, and levers exist (d1-2B below, prefix caching, quan
   endpoint) and logprobs in its chat API — Path A is reachable through the sanctioned
   runtime dependency. Requires a wllama build on llama.cpp ≥ the d1 PRs (#30110/#30114);
   verify the bundled engine version at integration.
+- **Harness note:** Ollama ≥ 0.40.x can replace llama-server for Path A (same
+  `/v1/systemone` API, verified); the numbers above stay llama-server-recorded.
+  d3 (`qwen35` decision model from the Ollama registry) shows the tie-break case is
+  learnable — worth remembering when comparing d1-3B vs d1-2B at issue-3 — but its
+  size/latency disqualify it as a profile.
 - All accuracy observations come from 4 synthetic posts; nothing here gates model or
   threshold choices — the gold set (M4) does.
 
@@ -151,6 +201,10 @@ python3 spike/run_path_a.py LiquidAI/d1-omni-600M-GGUF:Q8_0 -b 4096 -ub 4096
 
 # 3. Path B — LFM2.5-1.2B-Instruct chat + top-k logprobs
 python3 spike/run_path_b.py LiquidAI/LFM2.5-1.2B-Instruct-GGUF:Q4_K_M
+
+# 4. Path A against a running Ollama instead of llama-server (any install
+#    whose vendored llama.cpp has the d1 decision support; verified on 0.40.12)
+SPIKE_BASE_URL=http://<ollama-host>:11434 python3 spike/run_path_a.py d1-omni:latest
 ```
 
 The order-reversal probe (Path B anchoring) was run ad hoc: same request as
