@@ -160,6 +160,40 @@ OpenAI-compat chat API, but `LFM2.5-1.2B-Instruct` is not in the Ollama registry
 Path B stays on llama-server unless the model is imported via Modelfile from the
 HF GGUF.
 
+## In-browser integration cross-check (issue-3, 2026-10-29)
+
+The paste-a-post harness slice (GitHub #14) ran the same four synthetic posts
+through the extension itself: wllama (master build, vendored — see the slice's
+PR; llama.cpp @ 2026-10-18) in an MV3 offscreen document, d1-3B Q4_K_M, same
+question/criteria wording, `createSystemOne` end to end. Brave 156 (Chromium
+156) on the Windows host, Titan X (Pascal, 12 GB), 6 wasm worker threads,
+cross-origin isolated via the manifest COOP/COEP keys.
+
+| post | ai_slop | rubbish | genuine | top | ms (avg of 3 runs) |
+|---|---|---|---|---|---|
+| slop_listicle | **0.772** | 0.036 | 0.193 | ai_slop ✓ | ~31–37 000 |
+| engagement_bait | 0.044 | **0.890** | 0.066 | rubbish ✓ | ~31–37 000 |
+| firsthand | 0.013 | 0.011 | **0.976** | genuine ✓ | ~31–37 000 |
+| bot_hype_thread | **0.478** | 0.454 | 0.068 | ai_slop (near-tie, same as native) | ~31–37 000 |
+
+- Probabilities match the native llama-server table above within backend/float
+  drift (≤ 0.008); the tie-break post reproduces the same near-tie. Deterministic
+  across repeat runs and browser restarts.
+- The GGUF downloads once; after a full browser restart the model is ready in
+  ~10–15 s from wllama's OPFS cache with no re-download.
+- **Per-post latency is the new integration risk**: ~31–37 s/post on CPU wasm
+  (6 threads) vs ~5.5 s warm on the native 12-thread llama-server — ~6×
+  overhead. A WebGPU adapter is present (nvidia/Pascal) but the ggml-webgpu
+  backend did not engage in this run (all llama.cpp buffers logged CPU);
+  making it engage is the first latency lever, alongside CPU-thread tuning,
+  prefix caching, and d1-2B once an engine supports it (needs llama.cpp ≥
+  b11960/v0.8.0). Issue-5's queue tolerates late scores; the harness is
+  unaffected (manual paste).
+- Engine note: the npm package `@wllama/wllama@3.8.1` cannot load d1 models
+  at all (its llama.cpp is from 2026-09-03, before `lfm2-d1` merged upstream
+  on 2026-10-07); the slice vendors wllama master's own build. Swap back to
+  the registry package when npm publishes a d1-capable release.
+
 ## Recommendation (pending gold-set confirmation, M4)
 
 - **Path: A — d1 decision model via the systemone/decision API.** Per-option
