@@ -11,5 +11,6 @@ node_modules/
 *.zip
 
 # Model files never belong in git (downloaded/cached by the browser at runtime)
-*.gguf__pycache__/
+*.gguf
+__pycache__/
 *.pyc
