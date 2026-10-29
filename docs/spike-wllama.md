@@ -116,9 +116,10 @@ queue tolerates late scores, and levers exist (d1-2B below, prefix caching, quan
 
 ## Cross-check: same decision path on the owner's Windows Ollama (2026-10-28)
 
-The owner runs Ollama 0.40.12 on the Windows host (reached from WSL2 over the LAN;
-hardware specs not yet recorded — warm latencies suggest notably faster hardware
-than the WSL CPU side). Ollama vendors llama.cpp with the d1 decision support and
+The owner runs Ollama 0.40.12 on the Windows host (reached from WSL2 over the LAN)
+with an **NVIDIA Titan X (Pascal, 12 GB VRAM)**; CPU and GPU-offload status not
+verified — d1-omni answered warm in ~0.2 s while d3 needed ~19 s, so offload
+behavior across the two models is unclear. Ollama vendors llama.cpp with the d1 decision support and
 serves the same `/v1/systemone` endpoint, so **llama-server is not required to run
 Path A** — an Ollama install with the `d1-omni` model works out of the box.
 Run mode: `SPIKE_BASE_URL=http://<host>:11434 python3 spike/run_path_a.py d1-omni:latest`.
