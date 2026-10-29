@@ -32,6 +32,44 @@ npm run typecheck  # types only
 4. Click **Load unpacked** and select the repo's `dist/` folder
 5. After code changes: rebuild, then hit **Reload** (↻) on the extension card
 
+## Run the decision-model spike locally
+
+Findings and full reproduction details: [`docs/spike-wllama.md`](docs/spike-wllama.md).
+`spike/` is throwaway harness code (see the doc); it is not part of the extension.
+
+### Easiest: an existing Ollama (≥ 0.40.x, vendored llama.cpp with d1 decision
+### support — verified on 0.40.12)
+
+```bash
+# on the Ollama host (Windows): pull the decision models once
+ollama pull d1        # the 3B decision model — fits a 12 GB GPU easily
+ollama pull d1-omni   # the 600M small option
+
+# then, from the repo root (WSL in our setup — reach the host Ollama over the LAN/Tailscale):
+SPIKE_BASE_URL=http://<ollama-host>:11434 python3 spike/run_path_a.py d1:latest
+SPIKE_BASE_URL=http://<ollama-host>:11434 python3 spike/run_path_a.py d1-omni:latest
+```
+
+Each run prints per-post per-class probabilities and cold/warm latency for the
+4 synthetic posts in `spike/posts.jsonl` (3 rounds; first request after a load is
+the cold one). Path B (LFM2.5-1.2B chat + top-k logprobs) needs llama-server
+below — LFM2.5-1.2B-Instruct is not in the Ollama registry.
+
+### Alternative: llama-server (what the recorded numbers in the doc were measured on)
+
+```bash
+# Path A — d1 decision model, per-option probabilities from full logits
+python3 spike/run_path_a.py LiquidAI/d1-3B-GGUF:Q4_K_M
+python3 spike/run_path_a.py LiquidAI/d1-omni-600M-GGUF:Q8_0 -b 4096 -ub 4096
+
+# Path B — LFM2.5-1.2B-Instruct chat + top-k logprobs
+python3 spike/run_path_b.py LiquidAI/LFM2.5-1.2B-Instruct-GGUF:Q4_K_M
+```
+
+`llama-server` must be llama.cpp ≥ 0.7.0 / after the d1 PRs #30110+#30114 and
+reachable via `$LLAMA_SERVER`; first run downloads each model from HuggingFace
+once (Q4 d1-3B ≈ 1.9 GB, d1-omni-600M ≈ 0.64 GB, 1.2B ≈ 0.75 GB).
+
 ## Project layout
 
 | Path | What it is |
@@ -40,6 +78,7 @@ npm run typecheck  # types only
 | `tests/` | Vitest unit tests (pure logic; DOM scraping is proven manually) |
 | `dist/` | Build output — load this in Brave, not the repo root |
 | `manifest.config.ts` | MV3 manifest source, compiled by CRXJS into `dist/manifest.json` |
+| `docs/` | Findings and decision records (e.g. the issue-2 spike report) |
 | `PLAN.md` | Plan of record: milestones, decision log, ticket registry |
 | `TAXONOMY.md` | Class definitions and prompts (versioned, never inlined in code) |
 | `GLOSSARY.md` | Domain language |
