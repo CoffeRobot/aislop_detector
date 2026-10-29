@@ -94,6 +94,7 @@ def main():
                     missing = ",".join(sorted(set(CLASSES) - set(found)))
                     detail = f"renormalized over {sorted(found)}; BLIND to {missing}"
                 print(f"rnd{rnd} {post['id']:<18} {ms:8.0f} ms  emitted={emitted!r:<6} {detail}")
+                print(f"      \"{post['text'][:140]}\"")
             print()
         print(f"full-window coverage: {covered_reqs}/{3 * len(posts)} requests had all three class first-tokens in the window")
     finally:

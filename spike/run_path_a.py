@@ -35,6 +35,7 @@ def main():
                 top = max(probs, key=probs.get)
                 print(f"rnd{rnd} {post['id']:<18} {ms:8.0f} ms  top={top:<8} " +
                       "  ".join(f"{k}={v:.3f}" for k, v in probs.items()))
+                print(f"      \"{post['text'][:140]}\"")
             print()
     finally:
         if proc:
