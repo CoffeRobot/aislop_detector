@@ -1,5 +1,13 @@
 import { defineManifest } from '@crxjs/vite-plugin'
 
+// COOP/COEP: opts the extension origin into cross-origin isolation so wllama's
+// multi-threaded wasm (SharedArrayBuffer) can run in the offscreen document.
+// Chrome supports these manifest keys since 93; @types/chrome 0.0.280 predates them.
+const crossOriginIsolation = {
+  cross_origin_opener_policy: { value: 'same-origin' },
+  cross_origin_embedder_policy: { value: 'require-corp' },
+}
+
 export default defineManifest({
   manifest_version: 3,
   name: 'AISlop Detector',
@@ -15,4 +23,11 @@ export default defineManifest({
   content_scripts: [
     { matches: ['https://x.com/*', 'https://twitter.com/*'], js: ['src/content.ts'] },
   ],
+  permissions: ['offscreen'],
+  // wllama compiles its llama.cpp wasm inside the offscreen document — MV3
+  // extension pages need 'wasm-unsafe-eval' (WebAssembly only, no eval).
+  content_security_policy: {
+    extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+  },
+  ...crossOriginIsolation,
 })
