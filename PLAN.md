@@ -103,8 +103,9 @@ numbering). This registry is the single source of the plan ID ↔ GitHub number 
 | issue-9 | #12 | M4-P1a eval tooling | open |
 | issue-10 | #13 | M4-P1b gold set v1 | open |
 | issue-11 | #21 | Field: custom extension icon | merged (PR #22, 2026-10-26) |
+| issue-12 | #25 | engine provenance: build wllama from source, replace vendored build | open |
 
-Next free plan ID: `issue-12`. Historical exception: the issue-11 work ran on branch
+Next free plan ID: `issue-13`. Historical exception: the issue-11 work ran on branch
 `issue-21` under the old numbering; the branch name is left as-is. The superseded
 first-cut issues (GitHub #3–#11, never given plan IDs) are removed in this cleanup.
 
