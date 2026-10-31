@@ -1,0 +1,12 @@
+# Gitleaks: scan staged content at commit time (gitleaks protect --staged).
+# Default rule set extended; vendored engine artifacts and build output are
+# allowlisted because bundled JS/wasm trip entropy rules and cannot hold authored secrets.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Vendored engine artifacts and build output"
+paths = [
+  '''(^|/)vendor/''',
+  '''(^|/)dist/''',
+]

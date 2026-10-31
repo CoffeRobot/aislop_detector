@@ -1,0 +1,10 @@
+# Runs on every commit (see README.md → Pre-commit hooks; bypass: git commit --no-verify)
+lint-staged
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact
+else
+  echo "warn: gitleaks not installed — secret scan skipped (see README.md)"
+fi
+
+npm run type-check
