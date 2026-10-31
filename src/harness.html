@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>AISlop Detector — paste-a-post harness</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        background: rgb(22, 22, 24);
+        color: rgb(222, 222, 222);
+        font-family: system-ui, sans-serif;
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 1.5em 1em 4em;
+      }
+      h1 {
+        font-size: 1.1em;
+        margin: 0 0 1em;
+      }
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        background: rgb(30, 30, 32);
+        color: inherit;
+        border: 1px solid #555;
+        border-radius: 6px;
+        padding: 0.6em;
+        font: inherit;
+        resize: vertical;
+      }
+      button {
+        font-size: 1em;
+        padding: 0.45em 1.2em;
+        margin-top: 0.6em;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      #status {
+        margin-top: 1em;
+        color: #9a9;
+        font-size: 0.9em;
+        min-height: 1.2em;
+      }
+      #status.error {
+        color: #e5484d;
+      }
+      .bar-row {
+        display: grid;
+        grid-template-columns: 7em 1fr 4.5em;
+        gap: 0.6em;
+        align-items: center;
+        margin: 0.35em 0;
+      }
+      .bar-row .label {
+        font-size: 0.9em;
+      }
+      .bar-row .track {
+        display: block;
+        background: #333;
+        border-radius: 3px;
+        height: 0.9em;
+      }
+      .bar-row .fill {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+      }
+      .fill.ai_slop {
+        background: #e5484d;
+      }
+      .fill.rubbish {
+        background: #f5a623;
+      }
+      .fill.genuine {
+        background: #46a758;
+      }
+      .bar-row .value {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        font-size: 0.9em;
+      }
+      #result {
+        margin-top: 1.2em;
+      }
+      #meta {
+        margin-top: 1em;
+        color: #9a9;
+        font-size: 0.85em;
+        line-height: 1.5;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AISlop Detector — paste-a-post harness</h1>
+    <textarea id="post" rows="6" placeholder="Paste a post's text…"></textarea>
+    <button id="score" type="button" disabled>Score</button>
+    <div id="status">creating offscreen document…</div>
+    <div id="result" class="hidden">
+      <div class="bar-row" data-class="ai_slop"><span class="label">ai_slop</span><span class="track"><span class="fill ai_slop"></span></span><span class="value"></span></div>
+      <div class="bar-row" data-class="rubbish"><span class="label">rubbish</span><span class="track"><span class="fill rubbish"></span></span><span class="value"></span></div>
+      <div class="bar-row" data-class="genuine"><span class="label">genuine</span><span class="track"><span class="fill genuine"></span></span><span class="value"></span></div>
+      <div id="meta"></div>
+    </div>
+    <script type="module" src="./harness.ts"></script>
+  </body>
+</html>
