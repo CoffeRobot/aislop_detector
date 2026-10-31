@@ -7,7 +7,7 @@
     "build": "vite build",
     "type-check": "tsc --noEmit",
     "test": "tsc --noEmit && vitest run",
-    "test:staged": "vitest related --run --passWithNoTests",
+    "test:staged": "vitest run",
     "check": "npm run format:check && npm run lint && npm test && gitleaks detect --redact",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -32,20 +32,5 @@
   },
   "dependencies": {
     "@wllama/wllama": "file:vendor/wllama"
-  },
-  "lint-staged": {
-    "*.{js,cjs,mjs,ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,html,css}": [
-      "prettier --write"
-    ],
-    "src/**/*.{ts,tsx}": [
-      "npm run test:staged --"
-    ],
-    "tests/**/*.test.ts": [
-      "npm run test:staged --"
-    ]
   }
 }

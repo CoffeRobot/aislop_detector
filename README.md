@@ -32,7 +32,8 @@ npm run format     # Prettier --write over the repo (see .prettierignore)
 `prepare` script). From then on every `git commit` runs, in order:
 
 1. **lint-staged** — on staged files only: ESLint (`--fix`), Prettier (`--write`),
-   and vitest on tests related to the staged source (`test:staged`)
+   and the full vitest suite when any staged file is under `src/` or `tests/`
+   (`test:staged`; see `lint-staged.config.mjs` for the speed note)
 2. **gitleaks** — secret scan of the staged content (`gitleaks protect --staged`)
 3. **tsc --noEmit** — full type check
 
