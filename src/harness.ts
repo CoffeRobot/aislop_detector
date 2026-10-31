@@ -2,26 +2,8 @@
 // per-class probabilities from the decision model, end to end. The model runs
 // in the offscreen document; this page only sends messages and renders.
 
-import { CLASS_IDS } from './decision/probabilities'
-import type { ClassProbabilities, ClassId } from './decision/probabilities'
-
-interface ScoreResult {
-  probabilities: ClassProbabilities
-  dominant: ClassId | null
-  modelName: string
-  inputTokens: number
-  ms: number
-  promptVersion: string
-  taxonomyVersion: string
-}
-
-interface ModelStatus {
-  phase: 'loading' | 'ready' | 'error'
-  progress?: number
-  detail?: string
-  profile?: { repo: string; quant: string }
-  backend?: { webgpuAvailable: boolean; threads: number; crossOriginIsolated: boolean }
-}
+import type { ModelStatus, ScoreResult } from './decision/classifier'
+import type { ClassId } from './decision/probabilities'
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 const post = $('post') as HTMLTextAreaElement
@@ -44,15 +26,13 @@ async function ensureOffscreen(): Promise<void> {
   }
 }
 
-let pollTimer: ReturnType<typeof setTimeout> | null = null
-
 async function pollStatus(): Promise<void> {
   const s = (await chrome.runtime.sendMessage({ type: 'status' })) as ModelStatus
   renderStatus(s)
   if (s.phase === 'ready') {
     scoreBtn.disabled = false
   } else if (s.phase === 'loading') {
-    pollTimer = setTimeout(pollStatus, 500)
+    setTimeout(pollStatus, 500)
   } else {
     scoreBtn.disabled = true
   }
@@ -107,8 +87,8 @@ async function score(): Promise<void> {
 function renderResult(r: ScoreResult): void {
   resultEl.classList.remove('hidden')
   const rows = resultEl.querySelectorAll<HTMLElement>('.bar-row')
-  rows.forEach((row, i) => {
-    const id = CLASS_IDS[i]
+  rows.forEach((row) => {
+    const id = row.dataset.class as ClassId
     const fill = row.querySelector<HTMLElement>('.fill')
     const value = row.querySelector<HTMLElement>('.value')
     if (!fill || !value) return
