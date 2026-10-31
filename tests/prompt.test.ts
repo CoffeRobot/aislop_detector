@@ -31,16 +31,16 @@ describe('buildDecisionRequest', () => {
   it('keeps the validated spike wording', () => {
     const q = buildDecisionRequest('x').questions[QUESTION_ID]
     expect(q.instructions).toBe(
-      'Classify the social media post by substance. The substance axis decides: if a post is both machine-generated filler and engagement bait, it is rubbish.'
+      'Classify the social media post by substance. The substance axis decides: if a post is both machine-generated filler and engagement bait, it is rubbish.',
     )
     expect(q.criteria.ai_slop).toBe(
-      'Machine-generated filler: LLM cadence tells, generic advice, listicle padding, no personal anchor.'
+      'Machine-generated filler: LLM cadence tells, generic advice, listicle padding, no personal anchor.',
     )
     expect(q.criteria.rubbish).toBe(
-      'Low value regardless of author: engagement bait, hype and shilling, overclaiming, threadbait hooks.'
+      'Low value regardless of author: engagement bait, hype and shilling, overclaiming, threadbait hooks.',
     )
     expect(q.criteria.genuine).toBe(
-      'Real substance: firsthand experience, specific verifiable claims, original insight, honest signal.'
+      'Real substance: firsthand experience, specific verifiable claims, original insight, honest signal.',
     )
   })
 

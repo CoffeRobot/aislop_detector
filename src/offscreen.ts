@@ -16,9 +16,7 @@ chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
   if (type === 'score' && typeof text === 'string') {
     scorePost(text)
       .then((result) => sendResponse(result))
-      .catch((err: unknown) =>
-        sendResponse({ error: String((err as Error)?.message ?? err) })
-      )
+      .catch((err: unknown) => sendResponse({ error: String((err as Error)?.message ?? err) }))
     return true // async response
   }
   return false
