@@ -8,6 +8,7 @@
     "type-check": "tsc --noEmit",
     "test": "tsc --noEmit && vitest run",
     "test:staged": "vitest related --run --passWithNoTests",
+    "check": "npm run format:check && npm run lint && npm test && gitleaks detect --redact",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
