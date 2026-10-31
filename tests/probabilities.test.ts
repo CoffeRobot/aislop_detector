@@ -22,8 +22,9 @@ describe('extractProbabilities', () => {
   })
 
   it('accepts float drift in the sum within tolerance', () => {
-    expect(extractProbabilities(answerWith({ ai_slop: 0.334, rubbish: 0.333, genuine: 0.333 })))
-      .toEqual({ ai_slop: 0.334, rubbish: 0.333, genuine: 0.333 })
+    expect(
+      extractProbabilities(answerWith({ ai_slop: 0.334, rubbish: 0.333, genuine: 0.333 })),
+    ).toEqual({ ai_slop: 0.334, rubbish: 0.333, genuine: 0.333 })
   })
 
   it('accepts extreme saturated probabilities', () => {
@@ -33,26 +34,25 @@ describe('extractProbabilities', () => {
       genuine: 0,
     })
     expect(
-      extractProbabilities(answerWith({ ai_slop: 0.999999, rubbish: 1e-6, genuine: 1e-6 }))
+      extractProbabilities(answerWith({ ai_slop: 0.999999, rubbish: 1e-6, genuine: 1e-6 })),
     ).toEqual({ ai_slop: 0.999999, rubbish: 1e-6, genuine: 1e-6 })
   })
 
   it('fails loudly when the sum is off beyond tolerance', () => {
-    expect(() => extractProbabilities(answerWith({ ai_slop: 0.5, rubbish: 0.3, genuine: 0.1 })))
-      .toThrow(/malformed decision answer: probabilities sum/)
+    expect(() =>
+      extractProbabilities(answerWith({ ai_slop: 0.5, rubbish: 0.3, genuine: 0.1 })),
+    ).toThrow(/malformed decision answer: probabilities sum/)
   })
 
   it('fails loudly when a class is missing', () => {
     expect(() => extractProbabilities(answerWith({ ai_slop: 1, rubbish: 0 }))).toThrow(
-      /malformed decision answer: genuine/
+      /malformed decision answer: genuine/,
     )
   })
 
   it('fails loudly on an unknown class key (taxonomy drift)', () => {
     expect(() =>
-      extractProbabilities(
-        answerWith({ ai_slop: 0.5, rubbish: 0.25, genuine: 0.25, spam: 0.25 })
-      )
+      extractProbabilities(answerWith({ ai_slop: 0.5, rubbish: 0.25, genuine: 0.25, spam: 0.25 })),
     ).toThrow(/malformed decision answer: unknown class key "spam"/)
   })
 
@@ -88,7 +88,7 @@ describe('extractProbabilities', () => {
 
   it('fails loudly when the probabilities record is missing', () => {
     expect(() => extractProbabilities({ type: 'choice', choice: 'ai_slop' })).toThrow(
-      /malformed decision answer: probabilities record missing/
+      /malformed decision answer: probabilities record missing/,
     )
   })
 

@@ -67,8 +67,7 @@ async function score(): Promise<void> {
   statusEl.textContent = 'scoring…'
   try {
     const result = (await chrome.runtime.sendMessage({ type: 'score', text })) as
-      | ScoreResult
-      | { error: string }
+      ScoreResult | { error: string }
     if (result && 'error' in result) {
       statusEl.classList.add('error')
       statusEl.textContent = `score failed: ${result.error}`

@@ -1,0 +1,12 @@
+# Vendored engine artifacts and build output: bundled JS/wasm contain unavoidable
+# high-entropy strings; secrets cannot be authored there.
+vendor/
+dist/
+
+# Markdown is prose (plan/kit + docs): formatting is owner-controlled, not Prettier's
+*.md
+
+# GitHub issue/PR templates are owner kit
+.github/
+
+package-lock.json

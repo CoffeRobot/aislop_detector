@@ -20,9 +20,33 @@ runtime network egress is the one-time HuggingFace model download.
 ```bash
 npm install        # once, after cloning / pulling new dependencies
 npm run build      # → production build in dist/
-npm test           # typecheck (tsc) + unit tests (vitest)
-npm run typecheck  # types only
+npm test           # type-check (tsc) + unit tests (vitest)
+npm run type-check # types only
+npm run lint       # ESLint over the repo
+npm run format     # Prettier --write over the repo (see .prettierignore)
 ```
+
+## Pre-commit hooks
+
+`npm install` installs [husky](https://typicode.github.io/husky/) git hooks (via the
+`prepare` script). From then on every `git commit` runs, in order:
+
+1. **lint-staged** — on staged files only: ESLint (`--fix`), Prettier (`--write`),
+   and the full vitest suite when any staged file is under `src/` or `tests/`
+   (`test:staged`; see `lint-staged.config.mjs` for the speed note)
+2. **gitleaks** — secret scan of the staged content (`gitleaks protect --staged`)
+3. **tsc --noEmit** — full type check
+
+The `commit-msg` hook additionally runs **commitlint** to enforce Conventional
+Commits (`feat:`, `fix:`, `docs:`, `chore:`, …).
+
+Requirements beyond npm:
+
+- **gitleaks** (>= 8): `brew install gitleaks` — if missing, the hook warns and
+  skips the secret scan (all other gates still run)
+
+Emergency bypass (rare, justified use only): `git commit --no-verify`.
+
 
 ## Load the extension in Brave
 
