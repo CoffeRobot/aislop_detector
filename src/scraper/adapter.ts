@@ -157,7 +157,8 @@ async function scoreCell(cell: HTMLElement, candidate: ScoreableCandidate): Prom
     await chrome.runtime.sendMessage({ type: 'ensure-offscreen' })
     const result = await requestScore(judgedText(candidate))
     scored.set(candidate.id, result)
-    renderBars(cell, candidate.id, result)
+    // X may have recycled this cell; reconcile the result against current posts.
+    tick()
   } catch (err) {
     badge.textContent = `aislop: score failed: ${String((err as Error)?.message ?? err)}`
   } finally {
