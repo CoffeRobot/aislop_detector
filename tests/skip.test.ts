@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isExplicitPromotedLabel,
   judgedText,
   normalizeStatusId,
   scoreable,
@@ -75,6 +76,18 @@ describe('skipMarkerText', () => {
     expect(skipMarkerText('non_text')).toBe('aislop: skipped — non-text')
     expect(skipMarkerText('too_short')).toBe('aislop: skipped — too short')
     expect(skipMarkerText('no_id')).toBe('aislop: skipped — no id')
+  })
+})
+
+describe('isExplicitPromotedLabel', () => {
+  it('accepts explicit ad labels and rejects generic tracking nodes', () => {
+    expect(isExplicitPromotedLabel('Promoted')).toBe(true)
+    expect(isExplicitPromotedLabel('Sponsored')).toBe(true)
+    expect(isExplicitPromotedLabel('Ad')).toBe(true)
+    expect(isExplicitPromotedLabel('推广')).toBe(true)
+    expect(isExplicitPromotedLabel('广告')).toBe(true)
+    expect(isExplicitPromotedLabel('placementTracking')).toBe(false)
+    expect(isExplicitPromotedLabel('Read this advertisement')).toBe(false)
   })
 })
 

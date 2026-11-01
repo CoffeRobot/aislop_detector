@@ -24,6 +24,20 @@ export type ScoreableCandidate = PostCandidate & { id: string }
 /** Under this many words there is too little signal to judge (TAXONOMY: "~5"). */
 export const MIN_WORDS = 5
 
+const PROMOTED_LABELS: ReadonlySet<string> = new Set([
+  'promoted',
+  'sponsored',
+  'ad',
+  'ads',
+  '推广',
+  '广告',
+])
+
+/** Whether text is an explicit ad label. Generic tracking nodes are not proof. */
+export function isExplicitPromotedLabel(label: string): boolean {
+  return PROMOTED_LABELS.has(label.trim().toLowerCase())
+}
+
 /** The text the decision model judges: the post's own text plus quoted text. */
 export function judgedText(c: PostCandidate): string {
   return [c.mainText, c.quotedText].filter((t) => t.trim() !== '').join('\n\n')

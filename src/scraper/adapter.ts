@@ -9,6 +9,7 @@ import type { ModelStatus, ScoreResult } from '../decision/classifier'
 import { CLASS_IDS, type ClassId } from '../decision/probabilities'
 import * as S from './selectors'
 import {
+  isExplicitPromotedLabel,
   judgedText,
   normalizeStatusId,
   scoreable,
@@ -101,9 +102,26 @@ function extractCandidate(cell: HTMLElement): PostCandidate | null {
     id: href ? normalizeStatusId(href) : null,
     mainText: textsIn(article, false).join('\n'),
     quotedText: textsIn(article, true).join('\n'),
-    isPromoted: cell.querySelector(S.PROMOTED_TRACKER) !== null,
+    isPromoted: isPromotedCell(cell),
     isWidget: false,
   }
+}
+
+/** Whether X visibly labels this cell as an ad. Tracking wrappers alone are not proof. */
+function isPromotedCell(cell: HTMLElement): boolean {
+  return [...cell.querySelectorAll<HTMLElement>(S.PROMOTED_LABEL_SOURCES)].some((element) => {
+    if (element.closest(S.TWEET_TEXT) || element.closest(S.USER_NAME)) return false
+    if (isExplicitPromotedLabel(element.getAttribute('aria-label') ?? '')) return true
+    const text =
+      element.tagName === 'SPAN'
+        ? [...element.childNodes]
+            .filter((node) => node.nodeType === Node.TEXT_NODE)
+            .map((node) => node.textContent ?? '')
+            .join('')
+            .trim()
+        : (element.textContent ?? '').trim()
+    return isExplicitPromotedLabel(text)
+  })
 }
 
 /** The unnested post article of a cell, or null — nested articles are quoted
