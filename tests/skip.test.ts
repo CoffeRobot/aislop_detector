@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isExplicitPromotedLabel,
   judgedText,
   normalizeStatusId,
   scoreable,
+  skipMarkerText,
   skipReason,
   type PostCandidate,
 } from '../src/scraper/skip'
@@ -64,6 +66,35 @@ describe('skipReason', () => {
 
   it('non_text wins over too_short/short noise and no_id order holds', () => {
     expect(skipReason(candidate({ id: null, mainText: 'hi' }))).toBe('too_short')
+  })
+})
+
+describe('skipMarkerText', () => {
+  it('names the skip reason in the marker shown on the post', () => {
+    expect(skipMarkerText('promoted')).toBe('aislop: skipped — sponsored')
+    expect(skipMarkerText('widget')).toBe('aislop: skipped — widget')
+    expect(skipMarkerText('non_text')).toBe('aislop: skipped — non-text')
+    expect(skipMarkerText('too_short')).toBe('aislop: skipped — too short')
+    expect(skipMarkerText('no_id')).toBe('aislop: skipped — no id')
+  })
+})
+
+describe('isExplicitPromotedLabel', () => {
+  it('accepts explicit ad labels and rejects generic tracking nodes', () => {
+    expect(isExplicitPromotedLabel('Promoted')).toBe(true)
+    expect(isExplicitPromotedLabel('Sponsored')).toBe(true)
+    expect(isExplicitPromotedLabel('Ad')).toBe(true)
+    expect(isExplicitPromotedLabel('推广')).toBe(true)
+    expect(isExplicitPromotedLabel('广告')).toBe(true)
+    expect(isExplicitPromotedLabel('Pubblicità')).toBe(true)
+    expect(isExplicitPromotedLabel('Sponsorizzato')).toBe(true)
+    expect(isExplicitPromotedLabel('Anzeige')).toBe(true)
+    expect(isExplicitPromotedLabel('Patrocinado')).toBe(true)
+    expect(isExplicitPromotedLabel('Sponsorisé')).toBe(true)
+    expect(isExplicitPromotedLabel('Реклама')).toBe(true)
+    expect(isExplicitPromotedLabel('プロモーション')).toBe(true)
+    expect(isExplicitPromotedLabel('placementTracking')).toBe(false)
+    expect(isExplicitPromotedLabel('Read this advertisement')).toBe(false)
   })
 })
 

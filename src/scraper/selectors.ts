@@ -15,8 +15,17 @@ export const TWEET_TEXT = 'div[data-testid="tweetText"]'
 /** Anchor whose href is `/<user>/status/<id>` — the post's own permalink. */
 export const STATUS_LINK = 'a[href*="/status/"]'
 
-/** X's ad-placement wrapper around promoted/sponsored timeline cells. */
+/** X's ad-placement wrapper: on ad cells, and on some organic cells too. */
 export const PROMOTED_TRACKER = '[data-testid="placementTracking"]'
+
+/** Elements that can carry an explicit promoted/ad label (cheap, every cell). */
+export const PROMOTED_LABEL_SOURCES = '[aria-label], [data-testid="socialContext"]'
+
+/** Text elements scanned for an ad label (heavy pass, wrapper-gated). */
+export const PROMOTED_TEXT_SOURCES = 'span, [dir="auto"]'
+
+/** Display name, excluded when looking for an explicit ad label. */
+export const USER_NAME = '[data-testid="User-Name"]'
 
 /** "Who to follow" widget cells and the user rows they contain. */
 export const WHO_TO_FOLLOW =

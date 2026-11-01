@@ -24,6 +24,29 @@ export type ScoreableCandidate = PostCandidate & { id: string }
 /** Under this many words there is too little signal to judge (TAXONOMY: "~5"). */
 export const MIN_WORDS = 5
 
+const PROMOTED_LABELS: ReadonlySet<string> = new Set([
+  'promoted',
+  'sponsored',
+  'ad',
+  'ads',
+  'pubblicità',
+  'sponsorizzato',
+  'anzeige',
+  'werbeanzeige',
+  'promocionado',
+  'patrocinado',
+  'sponsorisé',
+  'реклама',
+  '推广',
+  '广告',
+  'プロモーション',
+])
+
+/** Whether text is an explicit ad label. Generic tracking nodes are not proof. */
+export function isExplicitPromotedLabel(label: string): boolean {
+  return PROMOTED_LABELS.has(label.trim().toLowerCase())
+}
+
 /** The text the decision model judges: the post's own text plus quoted text. */
 export function judgedText(c: PostCandidate): string {
   return [c.mainText, c.quotedText].filter((t) => t.trim() !== '').join('\n\n')
@@ -43,6 +66,20 @@ export function skipReason(c: PostCandidate): SkipReason | null {
   if (wordCount(text) < MIN_WORDS) return 'too_short'
   if (c.id === null) return 'no_id'
   return null
+}
+
+/** Short label per skip reason, shown in the per-post skip marker (issue-15). */
+const SKIP_REASON_LABEL: Record<SkipReason, string> = {
+  promoted: 'sponsored',
+  widget: 'widget',
+  non_text: 'non-text',
+  too_short: 'too short',
+  no_id: 'no id',
+}
+
+/** The marker text for a skipped post: `aislop: skipped — sponsored`. */
+export function skipMarkerText(reason: SkipReason): string {
+  return `aislop: skipped — ${SKIP_REASON_LABEL[reason]}`
 }
 
 /** Narrow a candidate to one that may be scored (SKIP-checked, id present). */

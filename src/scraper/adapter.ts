@@ -9,11 +9,15 @@ import type { ModelStatus, ScoreResult } from '../decision/classifier'
 import { CLASS_IDS, type ClassId } from '../decision/probabilities'
 import * as S from './selectors'
 import {
+  isExplicitPromotedLabel,
   judgedText,
   normalizeStatusId,
   scoreable,
+  skipMarkerText,
+  skipReason,
   type PostCandidate,
   type ScoreableCandidate,
+  type SkipReason,
 } from './skip'
 
 // Per-post cache keyed by the stable id — issue-5 grows this into the whole
@@ -25,6 +29,10 @@ const pending = new Set<string>()
 // Our badge on a cell, keyed by the post id it belongs to — X's virtualizer
 // recycles cells, so a badge for the wrong post is rebuilt, not reused.
 const BADGE_ID_ATTR = 'data-aislop-badge-id'
+
+// The skip marker on a cell, holding the skip reason. Its own attribute, so
+// it never collides with the score badge of a recycled cell.
+const SKIP_ATTR = 'data-aislop-skip'
 
 const BAR_COLORS: Record<ClassId, string> = {
   ai_slop: '#e5484d',
@@ -53,16 +61,29 @@ function scheduleTick(): void {
 function tick(): void {
   // Home timelines only (For You + Following): the v1 surface, owner-set.
   if (!location.pathname.startsWith('/home')) return
+  // Only the first visible scoreable post is scored (issue-4), one scoring
+  // in flight at a time; the whole timeline is issue-5. Skipped cells are
+  // marked along the way, so the scan continues past that post.
+  let scoredFirst = false
   for (const cell of document.querySelectorAll<HTMLElement>(S.TIMELINE_CELL)) {
     const candidate = extractCandidate(cell)
-    if (!candidate || !scoreable(candidate)) continue
-    if (!isVisible(cell)) continue
-    // Only the first visible scoreable post (issue-4); the rest of the
-    // timeline is issue-5.
+    if (!candidate) {
+      clearSkipMarker(cell)
+      continue
+    }
+    if (!scoreable(candidate)) {
+      // Skipped: say why, so silence never reads as "the extension is broken".
+      const reason = skipReason(candidate)
+      if (reason !== null) renderSkipMarker(cell, reason)
+      continue
+    }
+    // The cell was recycled onto a scoreable post: its old marker is stale.
+    clearSkipMarker(cell)
+    if (scoredFirst || !isVisible(cell)) continue
+    scoredFirst = true
     const cached = scored.get(candidate.id)
     if (cached) renderBars(cell, candidate.id, cached)
-    else if (!pending.has(candidate.id)) void scoreCell(cell, candidate)
-    return
+    else if (pending.size === 0) void scoreCell(cell, candidate)
   }
 }
 
@@ -81,9 +102,36 @@ function extractCandidate(cell: HTMLElement): PostCandidate | null {
     id: href ? normalizeStatusId(href) : null,
     mainText: textsIn(article, false).join('\n'),
     quotedText: textsIn(article, true).join('\n'),
-    isPromoted: cell.querySelector(S.PROMOTED_TRACKER) !== null,
+    isPromoted: isPromotedCell(cell),
     isWidget: false,
   }
+}
+
+/** Whether X visibly labels this cell as an ad. Tracking wrappers alone are not proof. */
+function isPromotedCell(cell: HTMLElement): boolean {
+  if (
+    [...cell.querySelectorAll<HTMLElement>(S.PROMOTED_LABEL_SOURCES)].some(carriesPromotedLabel)
+  ) {
+    return true
+  }
+  // The text scan is the heavy path; ad cells always carry the placement wrapper.
+  if (!cell.querySelector(S.PROMOTED_TRACKER)) return false
+  return [...cell.querySelectorAll<HTMLElement>(S.PROMOTED_TEXT_SOURCES)].some(carriesPromotedLabel)
+}
+
+/** Whether one element states an ad label, ignoring post text and display names. */
+function carriesPromotedLabel(element: HTMLElement): boolean {
+  if (element.closest(S.TWEET_TEXT) || element.closest(S.USER_NAME)) return false
+  if (isExplicitPromotedLabel(element.getAttribute('aria-label') ?? '')) return true
+  const text =
+    element.tagName === 'SPAN'
+      ? [...element.childNodes]
+          .filter((node) => node.nodeType === Node.TEXT_NODE)
+          .map((node) => node.textContent ?? '')
+          .join('')
+          .trim()
+      : (element.textContent ?? '').trim()
+  return isExplicitPromotedLabel(text)
 }
 
 /** The unnested post article of a cell, or null — nested articles are quoted
@@ -137,7 +185,8 @@ async function scoreCell(cell: HTMLElement, candidate: ScoreableCandidate): Prom
     await chrome.runtime.sendMessage({ type: 'ensure-offscreen' })
     const result = await requestScore(judgedText(candidate))
     scored.set(candidate.id, result)
-    renderBars(cell, candidate.id, result)
+    // X may have recycled this cell; reconcile the result against current posts.
+    tick()
   } catch (err) {
     badge.textContent = `aislop: score failed: ${String((err as Error)?.message ?? err)}`
   } finally {
@@ -163,6 +212,26 @@ async function requestScore(text: string): Promise<ScoreResult> {
     await new Promise((resolve) => setTimeout(resolve, 500))
   }
   throw lastError
+}
+
+/** Say why a post was not scored: a marker, never bars or probabilities
+ * (TAXONOMY SKIP rules — a skipped post is not a score). */
+function renderSkipMarker(cell: HTMLElement, reason: SkipReason): void {
+  // A recycled cell may still carry the previous post's bars — drop them.
+  cell.querySelector(`[${BADGE_ID_ATTR}]`)?.remove()
+  const existing = cell.querySelector<HTMLElement>(`[${SKIP_ATTR}]`)
+  if (existing?.getAttribute(SKIP_ATTR) === reason) return
+  existing?.remove()
+  const marker = document.createElement('div')
+  marker.setAttribute(SKIP_ATTR, reason)
+  marker.style.cssText = 'padding:2px 16px;font:11px system-ui;color:#767676'
+  marker.textContent = skipMarkerText(reason)
+  cell.appendChild(marker)
+}
+
+/** Drop a stale skip marker (the cell now holds a scoreable post). */
+function clearSkipMarker(cell: HTMLElement): void {
+  cell.querySelector(`[${SKIP_ATTR}]`)?.remove()
 }
 
 /** The cell's badge for `id`, or a fresh one; rebuilt when X recycled the cell. */
