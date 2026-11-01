@@ -4,6 +4,7 @@
 
 import type { ModelStatus, ScoreResult } from './decision/classifier'
 import type { ClassId } from './decision/probabilities'
+import { ensureOffscreen } from './ensure-offscreen'
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 const post = $('post') as HTMLTextAreaElement
@@ -11,20 +12,6 @@ const scoreBtn = $('score') as HTMLButtonElement
 const statusEl = $('status')
 const resultEl = $('result')
 const metaEl = $('meta')
-
-async function ensureOffscreen(): Promise<void> {
-  try {
-    await chrome.offscreen.createDocument({
-      url: 'src/offscreen.html',
-      reasons: [chrome.offscreen.Reason.WORKERS],
-      justification: 'Hosts the local decision model (wllama) that scores posts.',
-    })
-  } catch (err) {
-    // "Only a single offscreen document…" — someone else created it first.
-    const msg = String((err as Error)?.message ?? err)
-    if (!/single offscreen/i.test(msg)) throw err
-  }
-}
 
 async function pollStatus(): Promise<void> {
   const s = (await chrome.runtime.sendMessage({ type: 'status' })) as ModelStatus

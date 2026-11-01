@@ -105,8 +105,10 @@ numbering). This registry is the single source of the plan ID ↔ GitHub number 
 | issue-11 | #21 | Field: custom extension icon | merged (PR #22, 2026-10-26) |
 | issue-12 | #25 | engine provenance: build wllama from source, replace vendored build | open |
 | issue-13 | #26 | pre-commit quality & security gates (husky + lint-staged + prettier + eslint + commitlint + gitleaks) | open |
+| issue-14 | #29 | field: model-loading state visible (toolbar icon badge + loud in-post pill) | open |
+| issue-15 | #30 | field: explicit per-post skip marker (sponsored / widget / too short / non-text / no id) | open |
 
-Next free plan ID: `issue-14`. Historical exception: the issue-11 work ran on branch
+Next free plan ID: `issue-16`. Historical exception: the issue-11 work ran on branch
 `issue-21` under the old numbering; the branch name is left as-is. The superseded
 first-cut issues (GitHub #3–#11, never given plan IDs) are removed in this cleanup.
 
