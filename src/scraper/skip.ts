@@ -29,8 +29,17 @@ const PROMOTED_LABELS: ReadonlySet<string> = new Set([
   'sponsored',
   'ad',
   'ads',
+  'pubblicità',
+  'sponsorizzato',
+  'anzeige',
+  'werbeanzeige',
+  'promocionado',
+  'patrocinado',
+  'sponsorisé',
+  'реклама',
   '推广',
   '广告',
+  'プロモーション',
 ])
 
 /** Whether text is an explicit ad label. Generic tracking nodes are not proof. */

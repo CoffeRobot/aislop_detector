@@ -15,9 +15,14 @@ export const TWEET_TEXT = 'div[data-testid="tweetText"]'
 /** Anchor whose href is `/<user>/status/<id>` — the post's own permalink. */
 export const STATUS_LINK = 'a[href*="/status/"]'
 
-/** Candidate elements that can carry an explicit promoted/ad label. */
-export const PROMOTED_LABEL_SOURCES =
-  '[aria-label], [data-testid="socialContext"], [dir="auto"], span'
+/** X's ad-placement wrapper: on ad cells, and on some organic cells too. */
+export const PROMOTED_TRACKER = '[data-testid="placementTracking"]'
+
+/** Elements that can carry an explicit promoted/ad label (cheap, every cell). */
+export const PROMOTED_LABEL_SOURCES = '[aria-label], [data-testid="socialContext"]'
+
+/** Text elements scanned for an ad label (heavy pass, wrapper-gated). */
+export const PROMOTED_TEXT_SOURCES = 'span, [dir="auto"]'
 
 /** Display name, excluded when looking for an explicit ad label. */
 export const USER_NAME = '[data-testid="User-Name"]'

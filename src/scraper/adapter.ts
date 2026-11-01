@@ -61,9 +61,9 @@ function scheduleTick(): void {
 function tick(): void {
   // Home timelines only (For You + Following): the v1 surface, owner-set.
   if (!location.pathname.startsWith('/home')) return
-  // Only the first visible scoreable post is scored (issue-4); the rest of
-  // the timeline is issue-5. Skipped cells are marked along the way, so the
-  // scan continues past that post.
+  // Only the first visible scoreable post is scored (issue-4), one scoring
+  // in flight at a time; the whole timeline is issue-5. Skipped cells are
+  // marked along the way, so the scan continues past that post.
   let scoredFirst = false
   for (const cell of document.querySelectorAll<HTMLElement>(S.TIMELINE_CELL)) {
     const candidate = extractCandidate(cell)
@@ -83,7 +83,7 @@ function tick(): void {
     scoredFirst = true
     const cached = scored.get(candidate.id)
     if (cached) renderBars(cell, candidate.id, cached)
-    else if (!pending.has(candidate.id)) void scoreCell(cell, candidate)
+    else if (pending.size === 0) void scoreCell(cell, candidate)
   }
 }
 
@@ -109,19 +109,29 @@ function extractCandidate(cell: HTMLElement): PostCandidate | null {
 
 /** Whether X visibly labels this cell as an ad. Tracking wrappers alone are not proof. */
 function isPromotedCell(cell: HTMLElement): boolean {
-  return [...cell.querySelectorAll<HTMLElement>(S.PROMOTED_LABEL_SOURCES)].some((element) => {
-    if (element.closest(S.TWEET_TEXT) || element.closest(S.USER_NAME)) return false
-    if (isExplicitPromotedLabel(element.getAttribute('aria-label') ?? '')) return true
-    const text =
-      element.tagName === 'SPAN'
-        ? [...element.childNodes]
-            .filter((node) => node.nodeType === Node.TEXT_NODE)
-            .map((node) => node.textContent ?? '')
-            .join('')
-            .trim()
-        : (element.textContent ?? '').trim()
-    return isExplicitPromotedLabel(text)
-  })
+  if (
+    [...cell.querySelectorAll<HTMLElement>(S.PROMOTED_LABEL_SOURCES)].some(carriesPromotedLabel)
+  ) {
+    return true
+  }
+  // The text scan is the heavy path; ad cells always carry the placement wrapper.
+  if (!cell.querySelector(S.PROMOTED_TRACKER)) return false
+  return [...cell.querySelectorAll<HTMLElement>(S.PROMOTED_TEXT_SOURCES)].some(carriesPromotedLabel)
+}
+
+/** Whether one element states an ad label, ignoring post text and display names. */
+function carriesPromotedLabel(element: HTMLElement): boolean {
+  if (element.closest(S.TWEET_TEXT) || element.closest(S.USER_NAME)) return false
+  if (isExplicitPromotedLabel(element.getAttribute('aria-label') ?? '')) return true
+  const text =
+    element.tagName === 'SPAN'
+      ? [...element.childNodes]
+          .filter((node) => node.nodeType === Node.TEXT_NODE)
+          .map((node) => node.textContent ?? '')
+          .join('')
+          .trim()
+      : (element.textContent ?? '').trim()
+  return isExplicitPromotedLabel(text)
 }
 
 /** The unnested post article of a cell, or null — nested articles are quoted
