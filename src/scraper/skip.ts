@@ -45,6 +45,20 @@ export function skipReason(c: PostCandidate): SkipReason | null {
   return null
 }
 
+/** Short label per skip reason, shown in the per-post skip marker (issue-15). */
+const SKIP_REASON_LABEL: Record<SkipReason, string> = {
+  promoted: 'sponsored',
+  widget: 'widget',
+  non_text: 'non-text',
+  too_short: 'too short',
+  no_id: 'no id',
+}
+
+/** The marker text for a skipped post: `aislop: skipped — sponsored`. */
+export function skipMarkerText(reason: SkipReason): string {
+  return `aislop: skipped — ${SKIP_REASON_LABEL[reason]}`
+}
+
 /** Narrow a candidate to one that may be scored (SKIP-checked, id present). */
 export function scoreable(c: PostCandidate): c is ScoreableCandidate {
   return c.id !== null && skipReason(c) === null

@@ -3,6 +3,7 @@ import {
   judgedText,
   normalizeStatusId,
   scoreable,
+  skipMarkerText,
   skipReason,
   type PostCandidate,
 } from '../src/scraper/skip'
@@ -64,6 +65,16 @@ describe('skipReason', () => {
 
   it('non_text wins over too_short/short noise and no_id order holds', () => {
     expect(skipReason(candidate({ id: null, mainText: 'hi' }))).toBe('too_short')
+  })
+})
+
+describe('skipMarkerText', () => {
+  it('names the skip reason in the marker shown on the post', () => {
+    expect(skipMarkerText('promoted')).toBe('aislop: skipped — sponsored')
+    expect(skipMarkerText('widget')).toBe('aislop: skipped — widget')
+    expect(skipMarkerText('non_text')).toBe('aislop: skipped — non-text')
+    expect(skipMarkerText('too_short')).toBe('aislop: skipped — too short')
+    expect(skipMarkerText('no_id')).toBe('aislop: skipped — no id')
   })
 })
 

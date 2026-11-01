@@ -12,8 +12,11 @@ import {
   judgedText,
   normalizeStatusId,
   scoreable,
+  skipMarkerText,
+  skipReason,
   type PostCandidate,
   type ScoreableCandidate,
+  type SkipReason,
 } from './skip'
 
 // Per-post cache keyed by the stable id — issue-5 grows this into the whole
@@ -25,6 +28,10 @@ const pending = new Set<string>()
 // Our badge on a cell, keyed by the post id it belongs to — X's virtualizer
 // recycles cells, so a badge for the wrong post is rebuilt, not reused.
 const BADGE_ID_ATTR = 'data-aislop-badge-id'
+
+// The skip marker on a cell, holding the skip reason. Its own attribute, so
+// it never collides with the score badge of a recycled cell.
+const SKIP_ATTR = 'data-aislop-skip'
 
 const BAR_COLORS: Record<ClassId, string> = {
   ai_slop: '#e5484d',
@@ -53,16 +60,29 @@ function scheduleTick(): void {
 function tick(): void {
   // Home timelines only (For You + Following): the v1 surface, owner-set.
   if (!location.pathname.startsWith('/home')) return
+  // Only the first visible scoreable post is scored (issue-4); the rest of
+  // the timeline is issue-5. Skipped cells are marked along the way, so the
+  // scan continues past that post.
+  let scoredFirst = false
   for (const cell of document.querySelectorAll<HTMLElement>(S.TIMELINE_CELL)) {
     const candidate = extractCandidate(cell)
-    if (!candidate || !scoreable(candidate)) continue
-    if (!isVisible(cell)) continue
-    // Only the first visible scoreable post (issue-4); the rest of the
-    // timeline is issue-5.
+    if (!candidate) {
+      clearSkipMarker(cell)
+      continue
+    }
+    if (!scoreable(candidate)) {
+      // Skipped: say why, so silence never reads as "the extension is broken".
+      const reason = skipReason(candidate)
+      if (reason !== null) renderSkipMarker(cell, reason)
+      continue
+    }
+    // The cell was recycled onto a scoreable post: its old marker is stale.
+    clearSkipMarker(cell)
+    if (scoredFirst || !isVisible(cell)) continue
+    scoredFirst = true
     const cached = scored.get(candidate.id)
     if (cached) renderBars(cell, candidate.id, cached)
     else if (!pending.has(candidate.id)) void scoreCell(cell, candidate)
-    return
   }
 }
 
@@ -163,6 +183,26 @@ async function requestScore(text: string): Promise<ScoreResult> {
     await new Promise((resolve) => setTimeout(resolve, 500))
   }
   throw lastError
+}
+
+/** Say why a post was not scored: a marker, never bars or probabilities
+ * (TAXONOMY SKIP rules — a skipped post is not a score). */
+function renderSkipMarker(cell: HTMLElement, reason: SkipReason): void {
+  // A recycled cell may still carry the previous post's bars — drop them.
+  cell.querySelector(`[${BADGE_ID_ATTR}]`)?.remove()
+  const existing = cell.querySelector<HTMLElement>(`[${SKIP_ATTR}]`)
+  if (existing?.getAttribute(SKIP_ATTR) === reason) return
+  existing?.remove()
+  const marker = document.createElement('div')
+  marker.setAttribute(SKIP_ATTR, reason)
+  marker.style.cssText = 'padding:2px 16px;font:11px system-ui;color:#767676'
+  marker.textContent = skipMarkerText(reason)
+  cell.appendChild(marker)
+}
+
+/** Drop a stale skip marker (the cell now holds a scoreable post). */
+function clearSkipMarker(cell: HTMLElement): void {
+  cell.querySelector(`[${SKIP_ATTR}]`)?.remove()
 }
 
 /** The cell's badge for `id`, or a fresh one; rebuilt when X recycled the cell. */
