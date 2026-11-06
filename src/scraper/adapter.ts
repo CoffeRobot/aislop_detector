@@ -189,7 +189,10 @@ async function scoreCell(cell: HTMLElement, candidate: ScoreableCandidate): Prom
 
   try {
     // Content scripts cannot call chrome.offscreen; the background does it.
-    await chrome.runtime.sendMessage({ type: 'ensure-offscreen' })
+    const offscreen = await chrome.runtime.sendMessage({ type: 'ensure-offscreen' })
+    if (offscreen && typeof offscreen === 'object' && 'error' in offscreen) {
+      throw new Error(String(offscreen.error))
+    }
 
     // Poll model status while it loads so the in-post pill and toolbar badge
     // stay in sync. Abort early on error; proceed once ready.
