@@ -37,6 +37,20 @@ export interface ScoringQueue<R> {
   stop(): void
 }
 
+function assertPositiveInteger(name: string, value: number): void {
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`${name} must be a positive integer`)
+  }
+}
+
+function requirePositiveIntegerOrInfinity(name: string, value: number | undefined): number {
+  if (value === undefined || value === Infinity) return Infinity
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`${name} must be a positive integer or Infinity`)
+  }
+  return value
+}
+
 class QueueImpl<R> implements ScoringQueue<R> {
   private classify: (text: string) => Promise<R>
   private concurrency: number
@@ -52,27 +66,11 @@ class QueueImpl<R> implements ScoringQueue<R> {
   private stopped = false
 
   constructor(config: ScoringQueueConfig<R>) {
-    if (!Number.isFinite(config.concurrency) || config.concurrency < 1) {
-      throw new Error('concurrency must be a positive integer')
-    }
+    assertPositiveInteger('concurrency', config.concurrency)
     this.classify = config.classify
-    this.concurrency = Math.floor(config.concurrency)
-    this.maxBacklog = config.maxBacklog ?? Infinity
-    if (
-      typeof this.maxBacklog !== 'number' ||
-      Number.isNaN(this.maxBacklog) ||
-      this.maxBacklog < 0
-    ) {
-      throw new Error('maxBacklog must be a non-negative number')
-    }
-    this.maxCacheSize = config.maxCacheSize ?? Infinity
-    if (
-      typeof this.maxCacheSize !== 'number' ||
-      Number.isNaN(this.maxCacheSize) ||
-      this.maxCacheSize < 0
-    ) {
-      throw new Error('maxCacheSize must be a non-negative number')
-    }
+    this.concurrency = config.concurrency
+    this.maxBacklog = requirePositiveIntegerOrInfinity('maxBacklog', config.maxBacklog)
+    this.maxCacheSize = requirePositiveIntegerOrInfinity('maxCacheSize', config.maxCacheSize)
     this.onResult = config.onResult
     this.onError = config.onError
   }

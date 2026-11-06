@@ -204,6 +204,9 @@ describe('createScoringQueue', () => {
     expect(() => createScoringQueue({ classify: async () => 1, concurrency: -1 })).toThrow(
       /concurrency must be a positive integer/,
     )
+    expect(() => createScoringQueue({ classify: async () => 1, concurrency: 0.5 })).toThrow(
+      /concurrency must be a positive integer/,
+    )
   })
 
   it('keeps recently accessed results in the cache (LRU)', async () => {
@@ -242,6 +245,29 @@ describe('createScoringQueue', () => {
   it('rejects invalid maxCacheSize', () => {
     expect(() =>
       createScoringQueue({ classify: async () => 1, concurrency: 1, maxCacheSize: -1 }),
-    ).toThrow(/maxCacheSize must be a non-negative number/)
+    ).toThrow(/maxCacheSize must be a positive integer or Infinity/)
+    expect(() =>
+      createScoringQueue({ classify: async () => 1, concurrency: 1, maxCacheSize: 0 }),
+    ).toThrow(/maxCacheSize must be a positive integer or Infinity/)
+  })
+
+  it('rejects invalid maxBacklog', () => {
+    expect(() =>
+      createScoringQueue({ classify: async () => 1, concurrency: 1, maxBacklog: 0 }),
+    ).toThrow(/maxBacklog must be a positive integer or Infinity/)
+    expect(() =>
+      createScoringQueue({ classify: async () => 1, concurrency: 1, maxBacklog: -1 }),
+    ).toThrow(/maxBacklog must be a positive integer or Infinity/)
+  })
+
+  it('accepts Infinity for maxBacklog and maxCacheSize', () => {
+    expect(() =>
+      createScoringQueue({
+        classify: async () => 1,
+        concurrency: 1,
+        maxBacklog: Infinity,
+        maxCacheSize: Infinity,
+      }),
+    ).not.toThrow()
   })
 })
