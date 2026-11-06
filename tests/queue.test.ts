@@ -73,6 +73,27 @@ describe('createScoringQueue', () => {
     expect(q.result('a')?.text).toBe('one')
   })
 
+  it('deduplicates ids that are still waiting in the backlog', async () => {
+    const { classify, release, callCount } = deferredClassifier()
+    const q = makeQueue({ classify, concurrency: 1, maxBacklog: 2 })
+    q.submit('a', '1') // running
+    q.submit('b', '2') // queued
+    q.submit('b', '2') // duplicate while still queued — must not enqueue again
+    expect(q.inFlight()).toBe(1)
+    expect(q.queued()).toBe(1)
+    expect(callCount()).toBe(1)
+    expect(q.has('b')).toBe(true)
+    release(1, { id: 'a', text: '1' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(q.inFlight()).toBe(1)
+    expect(q.queued()).toBe(0)
+    expect(callCount()).toBe(2)
+    release(2, { id: 'b', text: '2' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(q.inFlight()).toBe(0)
+    expect(q.result('b')).toEqual({ id: 'b', text: '2' })
+  })
+
   it('does not error on duplicate/late arrivals', async () => {
     const q = makeQueue({
       classify: async (text) => ({ id: text, text }),
