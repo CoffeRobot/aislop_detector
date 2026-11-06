@@ -1,6 +1,6 @@
 {
   "name": "@wllama/wllama",
-  "version": "3.12.0-master.20261020",
+  "version": "3.12.0-master.20261106",
   "description": "Vendored build of ngxson/wllama master — see ../../vendor/PROVENANCE.md",
   "type": "module",
   "main": "./esm/index.js",
