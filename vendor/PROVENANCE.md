@@ -105,11 +105,18 @@ npm run build:typedef
 
 # 9. Copy the built artifacts into this repo ------------------------------------
 #    (run from the aislop_detector repo root)
-cp wllama-src/esm/index.js        aislop_detector/vendor/wllama/esm/index.js
-cp wllama-src/esm/workers-code/generated.d.ts \
-                                   aislop_detector/vendor/wllama/esm/workers-code/generated.d.ts
-# Copy all other .d.ts files from wllama-src/esm/ as needed; for this build the
-# remaining declarations are unchanged.
+
+# JS entry point
+cp wllama-src/esm/index.js aislop_detector/vendor/wllama/esm/index.js
+
+# All declaration files, preserving the esm/ subdirectory layout
+find wllama-src/esm -name '*.d.ts' -type f | while read -r f; do
+  target="${f/#wllama-src\/esm/aislop_detector\/vendor\/wllama\/esm}"
+  mkdir -p "$(dirname "$target")"
+  cp "$f" "$target"
+done
+
+# Wasm binary (served from public/, not the package tree)
 cp wllama-src/esm/wasm/wllama.wasm aislop_detector/public/wllama.wasm
 ```
 
@@ -120,8 +127,8 @@ sequence above is equivalent and produces the same engine features.
 
 | file | sha256 | size |
 |---|---|---|
-| `public/wllama.wasm` | `0e0ae71241b59fa0e636a54d788b8047ebca672967db1e96dc3ef18644411efe` | 8.9 MB |
-| `vendor/wllama/esm/index.js` | `f2ca7739000986a1d5a88c3005ac16a4f8e6801b51cfcbcd4f56bc7b78a868c0` | 316 KB |
+| `public/wllama.wasm` | `0e0ae71241b59fa0e636a54d788b8047ebca672967db1e96dc3ef18644411efe` | 9,233,991 bytes |
+| `vendor/wllama/esm/index.js` | `f2ca7739000986a1d5a88c3005ac16a4f8e6801b51cfcbcd4f56bc7b78a868c0` | 320,187 bytes |
 
 ## Engine verification
 
