@@ -1,48 +1,156 @@
-# Vendored @wllama/wllama — provenance
+# Vendored @wllama/wllama — from-source provenance
 
-`vendor/wllama/` is a verbatim copy of the `@wllama/wllama` npm package layout
-(esm JS + TypeScript declarations), built from **wllama master** on
-**2026-10-20 15:15 GMT** by the project's own deployment pipeline (the demo site
-at `https://github.ngxson.com/wllama/esm/`). `public/wllama.wasm` is the matching
-WebAssembly binary from the same build.
+`vendor/wllama/esm/index.js` and `public/wllama.wasm` are built from pinned
+upstream sources on this machine. They replace the previous demo-deployment
+vendored copy (wllama master, 2026-10-20 15:15 GMT).
 
-## Why vendored
+## Why built from source
 
-The newest npm release, `@wllama/wllama@3.8.1` (2026-10-02), vendors llama.cpp
-from 2026-09-03 (`c7bda03`) — **before** the LiquidAI d1 model-architecture
-support merged upstream (llama.cpp PRs #30110/#30114, 2026-10-07/08). Verified
-directly: the 3.8.1 wasm contains no `lfm2-d1` arch strings, so loading
-`LiquidAI/d1-3B-GGUF` fails with an unknown-architecture error. wllama master
-(llama.cpp @ `5aeac37`, 2026-10-18) has the support but is not yet published to
-npm (master is at 3.12.0, unpublished; no docker on this machine to build the
-wasm ourselves). This vendored copy is the project's own build of master.
+The published npm package is still not d1-capable:
 
-Swap back to the registry dependency — one line in `package.json` — as soon as
-npm publishes a d1-capable release (≥3.9.0, watch for `lfm2-d1` in the release
-notes), then delete `vendor/` and `public/wllama.wasm` (re-import the wasm from
-the package instead).
+```text
+$ npm view @wllama/wllama version
+3.8.1
+```
 
-## Files and checksums (as committed)
+`@wllama/wllama@3.8.1` vendors llama.cpp from 2026-09-03, before the LiquidAI
+d1 architecture support merged upstream (llama.cpp PRs #30110/#30114,
+2026-10-07/08). Its wasm contains no `lfm2-d1` strings, so `LiquidAI/d1-3B-GGUF`
+fails to load. Therefore this repo builds the engine itself from a pinned
+wllama master commit that includes d1 support.
 
-- `vendor/wllama/esm/index.js` — self-contained ESM bundle
-  sha256 `ae78882006d36eea6b55d75bc8577143d37f397151dd6f68344ea1c53bd23b25`
-- `public/wllama.wasm` — wasm binary (single asset; loaded via
-  `chrome.runtime.getURL('wllama.wasm')`, so it sits in `public/`)
-  sha256 `f5283730528f46ad68101c29714c014e8648344ee50a11d81e06693d4375ae66`
-- `vendor/wllama/esm/*.d.ts` — type declarations from the same build
-- `vendor/wllama/LICENCE` — upstream MIT licence
+If a d1-capable release later appears on npm, swap back to the registry
+dependency (`"@wllama/wllama": "^<version>"` in `package.json`, delete
+`vendor/wllama/` and `public/wllama.wasm`, re-point the wasm path if needed) and
+close this provenance path.
 
-The deployed files are rebuilt by upstream on every master push; the checksums
-above pin what this repo actually contains.
+## Pinned source commits
 
-## Engine verification (done at vendoring time)
+| repository | commit | date | notes |
+|---|---|---|---|
+| `ngxson/wllama` | `3bb2a46f0dab0b924e8cd992b85e8881c3d3a859` | 2026-10-20 16:57:55 +0200 | `sync latest llama.cpp (#293)` |
+| `ggerganov/llama.cpp` (submodule) | `5aeac37a35b44fde4bdffaec9159f2fcb253b622` | 2026-10-18 10:59:06 +0200 | has d1 decision support |
 
-- `public/wllama.wasm` contains arch strings `lfm2-d1` and `lfm2-d1-omni`
-  (required for the d1-3B / d1-omni decision models), the systemone glue
-  (`server_task_result_decision`, "Image input is not supported for systemone")
-  and the ggml WebGPU backend (`ggml-webgpu.cpp`).
-- It does **not** contain the d1-2B arch (needs llama.cpp ≥ b11960 / v0.8.0,
-  2026-10-28 — newer than this build); the d1-2B profile defers until an engine
-  catches up.
-- Upstream: https://github.com/ngxson/wllama — master 3.12.0, llama.cpp sync
-  `5aeac37` (2026-10-18).
+These SHAs are the exact upstream state used for this build. The llama.cpp
+submodule commit matches the one recorded in the previous demo-deployment
+provenance file, so the engine behavior on d1-3B is expected to be unchanged
+within float drift.
+
+## Build environment
+
+- Machine: Ubuntu 26.04.1 LTS (x86_64)
+- CPU threads used: 12 (`nproc`)
+- Emscripten SDK: 4.0.20 (`sdk-releases-c387d7a7e9537d0041d2c3ae71b7538cc978104e-64bit`)
+- CMake: 4.4.5
+- Node.js: 26.10.0
+- Python: 3.14.8
+- Build date: 2026-11-06 05:33 UTC
+
+## Build steps
+
+Native build (no Docker on this machine). The commands below reproduce the
+artifacts from a fresh clone given the toolchain.
+
+```bash
+# 1. Install toolchain --------------------------------------------------------
+#    - cmake  (tested with 4.4.5 from Homebrew)
+#    - emsdk  4.0.20
+#    - node, python3, curl, make, git (standard Ubuntu packages)
+
+# Install emsdk if not already present
+git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
+cd ~/emsdk
+./emsdk install 4.0.20
+./emsdk activate 4.0.20
+
+# 2. Clone pinned sources ------------------------------------------------------
+git clone --recurse-submodules https://github.com/ngxson/wllama.git wllama-src
+cd wllama-src
+git checkout 3bb2a46f0dab0b924e8cd992b85e8881c3d3a859
+git submodule update --init --recursive
+
+# 3. Install JS build deps -----------------------------------------------------
+npm install
+
+# 4. Source emsdk env in every shell that builds --------------------------------
+source "$HOME/emsdk/emsdk_env.sh"
+
+# 5. Download emdawnwebgpu (matches scripts/docker-compose.yml) -----------------
+mkdir -p build/emdawn
+cd build
+curl -L -o emdawn.zip \
+  "https://github.com/google/dawn/releases/download/v20260317.182325/emdawnwebgpu_pkg-v20260317.182325.zip"
+python3 -c "import zipfile; z=zipfile.ZipFile('emdawn.zip','r'); z.extractall('emdawn'); z.close()"
+cd ..
+
+# 6. Configure and build the wasm -----------------------------------------------
+emcmake cmake -S . -B build \
+  -DGGML_WEBGPU=ON \
+  -DGGML_WEBGPU_JSPI=ON \
+  -DEMDAWNWEBGPU_DIR="$PWD/build/emdawn/emdawnwebgpu_pkg" \
+  -DWLLAMA_TEST_BACKEND=OFF
+
+emmake make -C build wllama -j$(nproc)
+
+# 7. Copy wasm artifacts into the wllama package tree ---------------------------
+cp build/wllama.js src/wasm/
+cp build/wllama.wasm src/wasm/
+node scripts/build_source_map.js
+
+# 8. Bundle the JS/TS package ---------------------------------------------------
+npm run build:worker
+npm run build:tsup
+npm run build:typedef
+./scripts/post_build.sh
+
+# 9. Copy the built artifacts into this repo ------------------------------------
+#    (run from the aislop_detector repo root)
+cp wllama-src/esm/index.js        aislop_detector/vendor/wllama/esm/index.js
+cp wllama-src/esm/workers-code/generated.d.ts \
+                                   aislop_detector/vendor/wllama/esm/workers-code/generated.d.ts
+# Copy all other .d.ts files from wllama-src/esm/ as needed; for this build the
+# remaining declarations are unchanged.
+cp wllama-src/esm/wasm/wllama.wasm aislop_detector/public/wllama.wasm
+```
+
+The upstream docker path is `scripts/build_wasm.sh` + `npm run build`; the native
+sequence above is equivalent and produces the same engine features.
+
+## Committed artifacts and checksums
+
+| file | sha256 | size |
+|---|---|---|
+| `public/wllama.wasm` | `0e0ae71241b59fa0e636a54d788b8047ebca672967db1e96dc3ef18644411efe` | 8.9 MB |
+| `vendor/wllama/esm/index.js` | `f2ca7739000986a1d5a88c3005ac16a4f8e6801b51cfcbcd4f56bc7b78a868c0` | 316 KB |
+
+## Engine verification
+
+```bash
+strings public/wllama.wasm | grep -c 'lfm2-d1'       # 2
+strings public/wllama.wasm | grep -c 'lfm2-d1-omni' # 1
+strings public/wllama.wasm | grep -c 'systemone'     # 2
+strings public/wllama.wasm | grep -c 'server_task_result_decision' # 1
+strings public/wllama.wasm | grep -c 'Image input is not supported for systemone' # 1
+strings public/wllama.wasm | grep -c 'ggml-webgpu'  # 2
+```
+
+The d1-3B / d1-omni architecture strings and the systemone decision endpoint
+glue are present, and the ggml WebGPU backend is compiled in.
+
+## Reproducibility note
+
+WebAssembly builds from C++ are not guaranteed to be bit-for-bit identical across
+build environments (absolute paths, locale, toolchain minor variations, and
+emscripten cache state can perturb the binary). The provenance above pins the
+exact source commits, cmake flags, and toolchain versions so that anyone with
+the same environment can rebuild an engine with the same feature set. The
+acceptance bar is: same source + same flags → same d1 capability and same
+in-browser behavior, not byte-identical wasm.
+
+## Regression status
+
+The required Brave four-post regression against `docs/spike-wllama.md` was not
+performed in this build ticket (owner-only manual step, requires the d1-3B model
+download + Brave load). The PR remains a draft until that regression is supplied.
+The engine strings and automated project checks pass; no application logic was
+changed.
