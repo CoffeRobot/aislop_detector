@@ -16,6 +16,8 @@ export interface ScoringQueueConfig<R> {
   concurrency: number
   /** Maximum queued (not yet running) jobs; oldest dropped on overflow. */
   maxBacklog?: number
+  /** Maximum cached results; oldest evicted on overflow. */
+  maxCacheSize?: number
   onResult?: (id: string, result: R) => void
   onError?: (id: string, error: unknown) => void
 }
@@ -39,6 +41,7 @@ class QueueImpl<R> implements ScoringQueue<R> {
   private classify: (text: string) => Promise<R>
   private concurrency: number
   private maxBacklog: number
+  private maxCacheSize: number
   private onResult?: (id: string, result: R) => void
   private onError?: (id: string, error: unknown) => void
 
@@ -62,13 +65,21 @@ class QueueImpl<R> implements ScoringQueue<R> {
     ) {
       throw new Error('maxBacklog must be a non-negative number')
     }
+    this.maxCacheSize = config.maxCacheSize ?? Infinity
+    if (
+      typeof this.maxCacheSize !== 'number' ||
+      Number.isNaN(this.maxCacheSize) ||
+      this.maxCacheSize < 0
+    ) {
+      throw new Error('maxCacheSize must be a non-negative number')
+    }
     this.onResult = config.onResult
     this.onError = config.onError
   }
 
   submit(id: string, text: string): void {
     if (this.stopped) return
-    if (this.cache.has(id) || this.pending.has(id)) return
+    if (this.cache.has(id) || this.pending.has(id) || this.backlog.some((j) => j.id === id)) return
     if (this.backlog.length >= this.maxBacklog) {
       // Drop the oldest unstarted job: it is farthest from the viewport and
       // least likely to be looked at. This prevents unbounded growth when
@@ -88,6 +99,7 @@ class QueueImpl<R> implements ScoringQueue<R> {
       this.classify(job.text)
         .then((result) => {
           this.cache.set(job.id, result)
+          this.trimCache()
           this.onResult?.(job.id, result)
         })
         .catch((err) => {
@@ -106,7 +118,13 @@ class QueueImpl<R> implements ScoringQueue<R> {
   }
 
   has(id: string): boolean {
-    return this.cache.has(id) || this.pending.has(id)
+    return this.cache.has(id) || this.pending.has(id) || this.backlog.some((j) => j.id === id)
+  }
+
+  private trimCache(): void {
+    if (this.maxCacheSize === Infinity || this.cache.size <= this.maxCacheSize) return
+    const first = this.cache.keys().next().value
+    if (first !== undefined) this.cache.delete(first)
   }
 
   queued(): number {
