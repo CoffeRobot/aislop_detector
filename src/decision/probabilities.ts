@@ -14,6 +14,14 @@ export const CLASS_IDS: readonly ClassId[] = ['ai_slop', 'rubbish', 'genuine'] a
 
 export type ClassProbabilities = Record<ClassId, number>
 
+/** One bar color per class — the single place colors are defined. A new class
+ * token needs an entry here (TAXONOMY.md expansion procedure). */
+export const CLASS_COLORS: Record<ClassId, string> = {
+  ai_slop: '#e5484d',
+  rubbish: '#f5a623',
+  genuine: '#46a758',
+}
+
 // The wasm-side softmax sums to 1 in float64; allow a little rounding slack.
 const SUM_TOLERANCE = 1e-3
 
