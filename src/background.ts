@@ -12,7 +12,7 @@ import { ensureOffscreen } from './ensure-offscreen'
 
 function applyBadge(spec: ReturnType<typeof badgeFor>): void {
   const text = spec?.text ?? ''
-  const color = spec?.color ?? ''
+  const color = spec?.color ?? ([0, 0, 0, 0] as [number, number, number, number])
   chrome.action.setBadgeText({ text }).catch(() => {})
   chrome.action.setBadgeBackgroundColor({ color }).catch(() => {})
 }
