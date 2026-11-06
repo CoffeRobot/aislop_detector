@@ -4,6 +4,7 @@
 // is pure in src/decision/.
 
 import { ensureModel, modelStatus, scorePost } from './decision/classifier'
+import { shouldStartModelLoad } from './offscreen-guard'
 
 /** Broadcast model status to the background so it can update the toolbar badge. */
 let lastBroadcastKey = ''
@@ -27,8 +28,11 @@ const broadcastInterval = setInterval(() => {
 chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
   const { type, text } = (msg ?? {}) as { type?: unknown; text?: unknown }
   if (type === 'status') {
-    // First poll kicks the model load off; later polls just report it.
-    void ensureModel().catch(() => {})
+    // Only start a load when there is no terminal state yet; this keeps the
+    // error badge persistent instead of retrying the failed download on every poll.
+    if (shouldStartModelLoad(modelStatus().phase)) {
+      void ensureModel().catch(() => {})
+    }
     sendResponse(modelStatus())
     broadcastStatus()
     return false
@@ -41,3 +45,7 @@ chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
   }
   return false
 })
+
+// A fresh service worker (or a tab that only called `ensure-offscreen`) needs
+// the current badge state immediately, not after the first interval tick.
+broadcastStatus()
