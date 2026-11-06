@@ -111,7 +111,12 @@ function tick(): void {
     if (cached) {
       renderBars(cell, candidate.id, cached)
     } else if (errored.has(candidate.id)) {
-      renderError(cell, candidate.id, errored.get(candidate.id)!)
+      // Refresh the entry so long-visible failed posts are not retried once
+      // the capped error map evicts older ids under pressure.
+      const message = errored.get(candidate.id)!
+      errored.delete(candidate.id)
+      errored.set(candidate.id, message)
+      renderError(cell, candidate.id, message)
     } else if (!queue.has(candidate.id)) {
       queue.submit(candidate.id, judgedText(candidate))
     }

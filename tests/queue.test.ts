@@ -206,9 +206,42 @@ describe('createScoringQueue', () => {
     )
   })
 
-  it('rejects invalid maxBacklog', () => {
+  it('keeps recently accessed results in the cache (LRU)', async () => {
+    let calls = 0
+    const q = makeQueue({
+      concurrency: 4,
+      maxCacheSize: 4,
+      classify: async (text) => {
+        calls++
+        return { id: text, text }
+      },
+    })
+    q.submit('a', '1')
+    q.submit('b', '2')
+    q.submit('c', '3')
+    q.submit('d', '4')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(calls).toBe(4)
+    // Touch 'a' via both result() and has() so it becomes most-recently used.
+    expect(q.result('a')).toEqual({ id: '1', text: '1' })
+    expect(q.has('a')).toBe(true)
+    // Pushing 3 newer items should evict the LRU ('b'), not the touched 'a'.
+    q.submit('e', '5')
+    q.submit('f', '6')
+    q.submit('g', '7')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(calls).toBe(7)
+    expect(q.result('a')).toBeDefined()
+    expect(q.result('b')).toBeUndefined()
+    // Resubmitting the evicted id should score again.
+    q.submit('b', '2')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(calls).toBe(8)
+  })
+
+  it('rejects invalid maxCacheSize', () => {
     expect(() =>
-      createScoringQueue({ classify: async () => 1, concurrency: 1, maxBacklog: -1 }),
-    ).toThrow(/maxBacklog must be a non-negative number/)
+      createScoringQueue({ classify: async () => 1, concurrency: 1, maxCacheSize: -1 }),
+    ).toThrow(/maxCacheSize must be a non-negative number/)
   })
 })

@@ -79,7 +79,7 @@ class QueueImpl<R> implements ScoringQueue<R> {
 
   submit(id: string, text: string): void {
     if (this.stopped) return
-    if (this.cache.has(id) || this.pending.has(id) || this.backlog.some((j) => j.id === id)) return
+    if (this.touchCache(id) || this.pending.has(id) || this.backlog.some((j) => j.id === id)) return
     if (this.backlog.length >= this.maxBacklog) {
       // Drop the oldest unstarted job: it is farthest from the viewport and
       // least likely to be looked at. This prevents unbounded growth when
@@ -114,11 +114,21 @@ class QueueImpl<R> implements ScoringQueue<R> {
   }
 
   result(id: string): R | undefined {
+    this.touchCache(id)
     return this.cache.get(id)
   }
 
   has(id: string): boolean {
-    return this.cache.has(id) || this.pending.has(id) || this.backlog.some((j) => j.id === id)
+    return this.touchCache(id) || this.pending.has(id) || this.backlog.some((j) => j.id === id)
+  }
+
+  /** Refresh insertion order so recently seen ids survive cache eviction. */
+  private touchCache(id: string): boolean {
+    if (!this.cache.has(id)) return false
+    const r = this.cache.get(id)!
+    this.cache.delete(id)
+    this.cache.set(id, r)
+    return true
   }
 
   private trimCache(): void {
