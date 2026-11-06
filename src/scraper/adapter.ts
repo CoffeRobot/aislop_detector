@@ -54,10 +54,10 @@ export function start(): void {
     subtree: true,
   })
   tick()
-  // Wake the model and update the toolbar badge on every X page, even before a
-  // scoreable post appears. The offscreen document will broadcast its status to
-  // the background service worker.
-  void chrome.runtime.sendMessage({ type: 'status' }).catch(() => null)
+  // Make sure the offscreen document is alive on every X page, not just the
+  // home timeline. It will broadcast the model-loading state to the background
+  // service worker so the toolbar badge updates within seconds.
+  void chrome.runtime.sendMessage({ type: 'ensure-offscreen' }).catch(() => null)
 }
 
 let tickQueued = false
