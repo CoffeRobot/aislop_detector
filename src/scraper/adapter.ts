@@ -7,6 +7,7 @@
 
 import type { ModelStatus, ScoreResult } from '../decision/classifier'
 import { CLASS_IDS, type ClassId } from '../decision/probabilities'
+import { classifyScoreResponse } from '../score-response'
 import * as S from './selectors'
 import {
   isExplicitPromotedLabel,
@@ -40,12 +41,24 @@ const BAR_COLORS: Record<ClassId, string> = {
   genuine: '#46a758',
 }
 
+// Base container style for the score badge; loading/error/scoring pills override it.
+const BADGE_BASE_STYLE = 'padding:6px 16px;font:12px system-ui;color:#9a9'
+
+// Loud in-post status pill: high-contrast rounded badge so the loading/error
+// state is visible at a glance against X's timeline.
+const pillStyle = (background: string) =>
+  `display:inline-block;padding:4px 10px;border-radius:999px;font:12px/1.2 system-ui,sans-serif;font-weight:600;color:#fff;background:${background};margin:6px 16px;`
+
 export function start(): void {
   new MutationObserver(scheduleTick).observe(document.documentElement, {
     childList: true,
     subtree: true,
   })
   tick()
+  // Make sure the offscreen document is alive on every X page, not just the
+  // home timeline. It will broadcast the model-loading state to the background
+  // service worker so the toolbar badge updates within seconds.
+  void chrome.runtime.sendMessage({ type: 'ensure-offscreen' }).catch(() => null)
 }
 
 let tickQueued = false
@@ -168,29 +181,48 @@ function isVisible(el: HTMLElement): boolean {
 async function scoreCell(cell: HTMLElement, candidate: ScoreableCandidate): Promise<void> {
   pending.add(candidate.id)
   const badge = renderBadge(cell, candidate.id)
-  badge.textContent = 'aislop: preparing…'
-  const statusTimer = setInterval(async () => {
-    const s = (await chrome.runtime
-      .sendMessage({ type: 'status' })
-      .catch(() => null)) as ModelStatus | null
-    if (s?.phase === 'loading') {
-      badge.textContent =
-        s.progress !== undefined
-          ? `aislop: downloading model (${Math.round(s.progress * 100)}%)…`
-          : 'aislop: preparing model…'
-    }
-  }, 500)
+  renderLoadingPill(badge)
+
+  function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
   try {
     // Content scripts cannot call chrome.offscreen; the background does it.
-    await chrome.runtime.sendMessage({ type: 'ensure-offscreen' })
+    const offscreen = await chrome.runtime.sendMessage({ type: 'ensure-offscreen' })
+    if (offscreen && typeof offscreen === 'object' && 'error' in offscreen) {
+      throw new Error(String(offscreen.error))
+    }
+
+    // Poll model status while it loads so the in-post pill and toolbar badge
+    // stay in sync. Abort early on error; proceed once ready.
+    while (true) {
+      const s = (await chrome.runtime
+        .sendMessage({ type: 'status' })
+        .catch(() => null)) as ModelStatus | null
+      if (!s) {
+        await sleep(500)
+        continue
+      }
+      if (s.phase === 'loading') {
+        renderLoadingPill(badge)
+        await sleep(500)
+      } else if (s.phase === 'error') {
+        throw new Error(s.detail ?? 'model failed')
+      } else {
+        // ready
+        break
+      }
+    }
+
+    renderScoringPill(badge)
     const result = await requestScore(judgedText(candidate))
     scored.set(candidate.id, result)
     // X may have recycled this cell; reconcile the result against current posts.
     tick()
   } catch (err) {
-    badge.textContent = `aislop: score failed: ${String((err as Error)?.message ?? err)}`
+    renderErrorPill(badge, String((err as Error)?.message ?? err))
   } finally {
-    clearInterval(statusTimer)
     pending.delete(candidate.id)
   }
 }
@@ -198,17 +230,14 @@ async function scoreCell(cell: HTMLElement, candidate: ScoreableCandidate): Prom
 /** Score via the offscreen document; retry while that document is still
  * loading (a message sent into an unregistered listener resolves undefined). */
 async function requestScore(text: string): Promise<ScoreResult> {
-  const lastError = new Error('no response')
+  let lastError = new Error('no response')
   for (let attempt = 0; attempt < 40; attempt++) {
-    try {
-      const r = await chrome.runtime.sendMessage({ type: 'score', text })
-      if (r && typeof r === 'object' && 'probabilities' in r) return r as ScoreResult
-      if (r && typeof r === 'object' && 'error' in r) {
-        throw new Error(String((r as { error: unknown }).error))
-      }
-    } catch (err) {
-      Object.assign(lastError, { message: String((err as Error)?.message ?? err) })
-    }
+    const r = await chrome.runtime.sendMessage({ type: 'score', text })
+    const c = classifyScoreResponse(r)
+    if (c.kind === 'success') return c.result
+    if (c.kind === 'terminal') throw c.error
+    // Listener not registered yet: retry.
+    lastError = new Error('no response')
     await new Promise((resolve) => setTimeout(resolve, 500))
   }
   throw lastError
@@ -239,14 +268,33 @@ function renderBadge(cell: HTMLElement, id: string): HTMLElement {
   const existing = cell.querySelector<HTMLElement>(`[${BADGE_ID_ATTR}]`)
   if (existing?.getAttribute(BADGE_ID_ATTR) === id) {
     existing.textContent = ''
+    existing.style.cssText = BADGE_BASE_STYLE
     return existing
   }
   existing?.remove()
   const badge = document.createElement('div')
   badge.setAttribute(BADGE_ID_ATTR, id)
-  badge.style.cssText = 'padding:6px 16px;font:12px system-ui;color:#9a9'
+  badge.style.cssText = BADGE_BASE_STYLE
   cell.appendChild(badge)
   return badge
+}
+
+/** Loud loading pill: orange rounded badge so the load is visible at a glance. */
+function renderLoadingPill(badge: HTMLElement): void {
+  badge.textContent = 'aislop: loading model…'
+  badge.style.cssText = pillStyle('#f5a623')
+}
+
+/** Transient "scoring…" pill shown after the model is ready but before bars render. */
+function renderScoringPill(badge: HTMLElement): void {
+  badge.textContent = 'aislop: scoring…'
+  badge.style.cssText = pillStyle('#3b82f6')
+}
+
+/** Red pill naming the failure so a broken model is not silent. */
+function renderErrorPill(badge: HTMLElement, message: string): void {
+  badge.textContent = `aislop: ${message}`
+  badge.style.cssText = pillStyle('#e5484d')
 }
 
 /** The three probability bars — one per class, fill = probability. */
