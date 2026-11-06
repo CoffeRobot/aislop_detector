@@ -1,12 +1,13 @@
 // Scraper adapter: the only module that touches X's DOM. A MutationObserver
 // drives it; each timeline cell is extracted as plain facts, the pure SKIP
-// rules (skip.ts) decide, and the first visible scoreable post is scored
-// end-to-end through the offscreen pipeline and gets the three probability
-// bars. Selectors live in selectors.ts; decisions in skip.ts; this file is
-// the thin glue between DOM and pure logic. v1 surface: home timelines only.
+// rules (skip.ts) decide, and every top-level post is scored asynchronously
+// through the bounded-concurrency queue, getting three probability bars plus a
+// click-through detail. Selectors live in selectors.ts; decisions in skip.ts;
+// queue logic in queue/scoringQueue.ts. v1 surface: home timelines only.
 
-import type { ModelStatus, ScoreResult } from '../decision/classifier'
-import { CLASS_IDS, type ClassId } from '../decision/probabilities'
+import type { ScoreResult } from '../decision/classifier'
+import { CLASS_COLORS, CLASS_IDS } from '../decision/probabilities'
+import { createScoringQueue } from '../queue/scoringQueue'
 import * as S from './selectors'
 import {
   isExplicitPromotedLabel,
@@ -16,15 +17,29 @@ import {
   skipMarkerText,
   skipReason,
   type PostCandidate,
-  type ScoreableCandidate,
   type SkipReason,
 } from './skip'
 
-// Per-post cache keyed by the stable id — issue-5 grows this into the whole
-// timeline queue. Kept in the content script so a re-rendered post never
-// scores twice.
-const scored = new Map<string, ScoreResult>()
-const pending = new Set<string>()
+// Bounded-concurrency queue: at most this many classifier calls in parallel.
+const SCORING_CONCURRENCY = 2
+// Max queued (not yet running) posts. Once scrolling outpaces the model, the
+// oldest unstarted job is dropped so memory does not grow without bound.
+const MAX_BACKLOG = 20
+
+const queue = createScoringQueue<ScoreResult>({
+  concurrency: SCORING_CONCURRENCY,
+  maxBacklog: MAX_BACKLOG,
+  classify: (text) => requestScore(text),
+  onResult: () => scheduleTick(),
+  onError: (id, err) => {
+    errored.set(id, String((err as Error)?.message ?? err))
+    scheduleTick()
+  },
+})
+
+// Per-post error state: ids whose classifier call failed are shown as failed and
+// not resubmitted in this session.
+const errored = new Map<string, string>()
 
 // Our badge on a cell, keyed by the post id it belongs to — X's virtualizer
 // recycles cells, so a badge for the wrong post is rebuilt, not reused.
@@ -34,11 +49,8 @@ const BADGE_ID_ATTR = 'data-aislop-badge-id'
 // it never collides with the score badge of a recycled cell.
 const SKIP_ATTR = 'data-aislop-skip'
 
-const BAR_COLORS: Record<ClassId, string> = {
-  ai_slop: '#e5484d',
-  rubbish: '#f5a623',
-  genuine: '#46a758',
-}
+// Detail panel inside a badge; hidden until the user clicks the badge.
+const DETAIL_ATTR = 'data-aislop-detail'
 
 export function start(): void {
   new MutationObserver(scheduleTick).observe(document.documentElement, {
@@ -61,10 +73,9 @@ function scheduleTick(): void {
 function tick(): void {
   // Home timelines only (For You + Following): the v1 surface, owner-set.
   if (!location.pathname.startsWith('/home')) return
-  // Only the first visible scoreable post is scored (issue-4), one scoring
-  // in flight at a time; the whole timeline is issue-5. Skipped cells are
-  // marked along the way, so the scan continues past that post.
-  let scoredFirst = false
+  // Walk every timeline cell: scoreable posts get bars (cached or queued);
+  // skipped posts get a reason marker; unscored posts show nothing until
+  // their score lands. Scrolling is never blocked — the queue bounds work.
   for (const cell of document.querySelectorAll<HTMLElement>(S.TIMELINE_CELL)) {
     const candidate = extractCandidate(cell)
     if (!candidate) {
@@ -79,11 +90,14 @@ function tick(): void {
     }
     // The cell was recycled onto a scoreable post: its old marker is stale.
     clearSkipMarker(cell)
-    if (scoredFirst || !isVisible(cell)) continue
-    scoredFirst = true
-    const cached = scored.get(candidate.id)
-    if (cached) renderBars(cell, candidate.id, cached)
-    else if (pending.size === 0) void scoreCell(cell, candidate)
+    const cached = queue.result(candidate.id)
+    if (cached) {
+      renderBars(cell, candidate.id, cached)
+    } else if (errored.has(candidate.id)) {
+      renderError(cell, candidate.id, errored.get(candidate.id)!)
+    } else if (!queue.has(candidate.id)) {
+      queue.submit(candidate.id, judgedText(candidate))
+    }
   }
 }
 
@@ -160,44 +174,11 @@ function firstStatusHref(article: HTMLElement): string | null {
   return null
 }
 
-function isVisible(el: HTMLElement): boolean {
-  const r = el.getBoundingClientRect()
-  return r.height > 0 && r.bottom > 0 && r.top < window.innerHeight
-}
-
-async function scoreCell(cell: HTMLElement, candidate: ScoreableCandidate): Promise<void> {
-  pending.add(candidate.id)
-  const badge = renderBadge(cell, candidate.id)
-  badge.textContent = 'aislop: preparing…'
-  const statusTimer = setInterval(async () => {
-    const s = (await chrome.runtime
-      .sendMessage({ type: 'status' })
-      .catch(() => null)) as ModelStatus | null
-    if (s?.phase === 'loading') {
-      badge.textContent =
-        s.progress !== undefined
-          ? `aislop: downloading model (${Math.round(s.progress * 100)}%)…`
-          : 'aislop: preparing model…'
-    }
-  }, 500)
-  try {
-    // Content scripts cannot call chrome.offscreen; the background does it.
-    await chrome.runtime.sendMessage({ type: 'ensure-offscreen' })
-    const result = await requestScore(judgedText(candidate))
-    scored.set(candidate.id, result)
-    // X may have recycled this cell; reconcile the result against current posts.
-    tick()
-  } catch (err) {
-    badge.textContent = `aislop: score failed: ${String((err as Error)?.message ?? err)}`
-  } finally {
-    clearInterval(statusTimer)
-    pending.delete(candidate.id)
-  }
-}
-
 /** Score via the offscreen document; retry while that document is still
  * loading (a message sent into an unregistered listener resolves undefined). */
 async function requestScore(text: string): Promise<ScoreResult> {
+  // Ensure the offscreen document exists before the first real score request.
+  await chrome.runtime.sendMessage({ type: 'ensure-offscreen' })
   const lastError = new Error('no response')
   for (let attempt = 0; attempt < 40; attempt++) {
     try {
@@ -244,7 +225,8 @@ function renderBadge(cell: HTMLElement, id: string): HTMLElement {
   existing?.remove()
   const badge = document.createElement('div')
   badge.setAttribute(BADGE_ID_ATTR, id)
-  badge.style.cssText = 'padding:6px 16px;font:12px system-ui;color:#9a9'
+  badge.style.cssText =
+    'padding:6px 16px;font:12px system-ui;color:#9a9;cursor:pointer;user-select:none'
   cell.appendChild(badge)
   return badge
 }
@@ -263,7 +245,7 @@ function renderBars(cell: HTMLElement, id: string, r: ScoreResult): void {
     const track = document.createElement('span')
     track.style.cssText = 'display:block;background:#333;border-radius:3px;height:.7em'
     const fill = document.createElement('span')
-    fill.style.cssText = `display:block;height:100%;border-radius:3px;background:${BAR_COLORS[cls]};width:${(p * 100).toFixed(1)}%`
+    fill.style.cssText = `display:block;height:100%;border-radius:3px;background:${CLASS_COLORS[cls]};width:${(p * 100).toFixed(1)}%`
     track.appendChild(fill)
     const value = document.createElement('span')
     value.textContent = p.toFixed(3)
@@ -271,4 +253,49 @@ function renderBars(cell: HTMLElement, id: string, r: ScoreResult): void {
     row.append(label, track, value)
     badge.appendChild(row)
   }
+  ensureDetail(badge, r)
+}
+
+function renderError(cell: HTMLElement, id: string, message: string): void {
+  const badge = renderBadge(cell, id)
+  badge.textContent = `aislop: score failed: ${message}`
+}
+
+/** Toggle the click-through detail panel showing exactly what the model said. */
+function ensureDetail(badge: HTMLElement, r: ScoreResult): void {
+  if (badge.querySelector(`[${DETAIL_ATTR}]`)) return
+  badge.addEventListener('click', (e) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const existing = badge.querySelector<HTMLElement>(`[${DETAIL_ATTR}]`)
+    if (existing) {
+      existing.remove()
+      return
+    }
+    const detail = document.createElement('div')
+    detail.setAttribute(DETAIL_ATTR, '')
+    detail.style.cssText =
+      'margin-top:.6em;padding:.6em;background:rgba(0,0,0,.55);border-radius:4px;font:11px system-ui;line-height:1.5;color:#bbb'
+    detail.addEventListener('click', (ev) => {
+      ev.stopPropagation()
+      ev.preventDefault()
+    })
+    const dominant = r.dominant ?? 'tie'
+    detail.innerHTML = [
+      `<strong>probabilities</strong>: ${CLASS_IDS.map((c) => `${c} ${r.probabilities[c].toFixed(3)}`).join(', ')}`,
+      `<strong>dominant</strong>: ${dominant}`,
+      `<strong>model</strong>: ${escapeHtml(r.modelName)}`,
+      `<strong>prompt</strong>: ${r.promptVersion} — <strong>taxonomy</strong>: ${r.taxonomyVersion}`,
+    ].join('<br>')
+    badge.appendChild(detail)
+  })
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
