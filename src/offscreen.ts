@@ -5,12 +5,32 @@
 
 import { ensureModel, modelStatus, scorePost } from './decision/classifier'
 
+/** Broadcast model status to the background so it can update the toolbar badge. */
+let lastBroadcastKey = ''
+function broadcastStatus(): void {
+  const status = modelStatus()
+  const key = `${status.phase}|${status.progress ?? ''}|${status.detail ?? ''}`
+  if (key === lastBroadcastKey) return
+  lastBroadcastKey = key
+  chrome.runtime.sendMessage({ type: 'model-status', status }).catch(() => {})
+}
+
+// Publish status changes while the model is still loading; stop once we reach a
+// terminal state. This keeps the toolbar icon updating even if the content
+// script is not actively polling.
+const broadcastInterval = setInterval(() => {
+  broadcastStatus()
+  const phase = modelStatus().phase
+  if (phase === 'ready' || phase === 'error') clearInterval(broadcastInterval)
+}, 500)
+
 chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
   const { type, text } = (msg ?? {}) as { type?: unknown; text?: unknown }
   if (type === 'status') {
     // First poll kicks the model load off; later polls just report it.
     void ensureModel().catch(() => {})
     sendResponse(modelStatus())
+    broadcastStatus()
     return false
   }
   if (type === 'score' && typeof text === 'string') {
