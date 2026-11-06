@@ -3,7 +3,7 @@
 // in the offscreen document; this page only sends messages and renders.
 
 import type { ModelStatus, ScoreResult } from './decision/classifier'
-import type { ClassId } from './decision/probabilities'
+import { CLASS_COLORS, type ClassId } from './decision/probabilities'
 import { ensureOffscreen } from './ensure-offscreen'
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
@@ -80,6 +80,7 @@ function renderResult(r: ScoreResult): void {
     if (!fill || !value) return
     const p = r.probabilities[id]
     fill.style.width = `${(p * 100).toFixed(1)}%`
+    fill.style.backgroundColor = CLASS_COLORS[id]
     value.textContent = p.toFixed(3)
     row.style.opacity = r.dominant === id ? '1' : '0.55'
   })
