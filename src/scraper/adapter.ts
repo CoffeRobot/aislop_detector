@@ -7,6 +7,7 @@
 
 import type { ModelStatus, ScoreResult } from '../decision/classifier'
 import { CLASS_IDS, type ClassId } from '../decision/probabilities'
+import { classifyScoreResponse } from '../score-response'
 import * as S from './selectors'
 import {
   isExplicitPromotedLabel,
@@ -226,17 +227,14 @@ async function scoreCell(cell: HTMLElement, candidate: ScoreableCandidate): Prom
 /** Score via the offscreen document; retry while that document is still
  * loading (a message sent into an unregistered listener resolves undefined). */
 async function requestScore(text: string): Promise<ScoreResult> {
-  const lastError = new Error('no response')
+  let lastError = new Error('no response')
   for (let attempt = 0; attempt < 40; attempt++) {
-    try {
-      const r = await chrome.runtime.sendMessage({ type: 'score', text })
-      if (r && typeof r === 'object' && 'probabilities' in r) return r as ScoreResult
-      if (r && typeof r === 'object' && 'error' in r) {
-        throw new Error(String((r as { error: unknown }).error))
-      }
-    } catch (err) {
-      Object.assign(lastError, { message: String((err as Error)?.message ?? err) })
-    }
+    const r = await chrome.runtime.sendMessage({ type: 'score', text })
+    const c = classifyScoreResponse(r)
+    if (c.kind === 'success') return c.result
+    if (c.kind === 'terminal') throw c.error
+    // Listener not registered yet: retry.
+    lastError = new Error('no response')
     await new Promise((resolve) => setTimeout(resolve, 500))
   }
   throw lastError
