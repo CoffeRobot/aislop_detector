@@ -12,9 +12,13 @@ import { ensureOffscreen } from './ensure-offscreen'
 
 function applyBadge(spec: ReturnType<typeof badgeFor>): void {
   const text = spec?.text ?? ''
-  const color = spec?.color ?? ([0, 0, 0, 0] as [number, number, number, number])
   chrome.action.setBadgeText({ text }).catch(() => {})
-  chrome.action.setBadgeBackgroundColor({ color }).catch(() => {})
+  // Only set a color when the badge has a state; clearing the text is enough
+  // to hide the badge, and leaving the background alone preserves any manifest
+  // default color.
+  if (spec?.color) {
+    chrome.action.setBadgeBackgroundColor({ color: spec.color }).catch(() => {})
+  }
 }
 
 chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
