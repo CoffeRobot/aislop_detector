@@ -25,14 +25,19 @@ const SCORING_CONCURRENCY = 2
 // Max queued (not yet running) posts. Once scrolling outpaces the model, the
 // oldest unstarted job is dropped so memory does not grow without bound.
 const MAX_BACKLOG = 20
+// Cap cached results and errors so a long scrolling session does not grow
+// these maps without bound. Both use insertion-order eviction (LRU-ish).
+const MAX_CACHED_RESULTS = 1000
+const MAX_CACHED_ERRORS = 500
 
 const queue = createScoringQueue<ScoreResult>({
   concurrency: SCORING_CONCURRENCY,
   maxBacklog: MAX_BACKLOG,
+  maxCacheSize: MAX_CACHED_RESULTS,
   classify: (text) => requestScore(text),
   onResult: () => scheduleTick(),
   onError: (id, err) => {
-    errored.set(id, String((err as Error)?.message ?? err))
+    recordError(id, String((err as Error)?.message ?? err))
     scheduleTick()
   },
 })
@@ -40,6 +45,14 @@ const queue = createScoringQueue<ScoreResult>({
 // Per-post error state: ids whose classifier call failed are shown as failed and
 // not resubmitted in this session.
 const errored = new Map<string, string>()
+
+function recordError(id: string, message: string): void {
+  if (errored.size >= MAX_CACHED_ERRORS) {
+    const first = errored.keys().next().value
+    if (first !== undefined) errored.delete(first)
+  }
+  errored.set(id, message)
+}
 
 // Our badge on a cell, keyed by the post id it belongs to — X's virtualizer
 // recycles cells, so a badge for the wrong post is rebuilt, not reused.
@@ -51,6 +64,10 @@ const SKIP_ATTR = 'data-aislop-skip'
 
 // Detail panel inside a badge; hidden until the user clicks the badge.
 const DETAIL_ATTR = 'data-aislop-detail'
+// Guard so the badge click listener is attached at most once.
+const DETAIL_LISTENER_ATTR = 'data-aislop-detail-listener'
+// Marker on each probability bar row so renderBars can skip rebuilds.
+const BAR_ATTR = 'data-aislop-bar'
 
 export function start(): void {
   new MutationObserver(scheduleTick).observe(document.documentElement, {
@@ -219,7 +236,8 @@ function clearSkipMarker(cell: HTMLElement): void {
 function renderBadge(cell: HTMLElement, id: string): HTMLElement {
   const existing = cell.querySelector<HTMLElement>(`[${BADGE_ID_ATTR}]`)
   if (existing?.getAttribute(BADGE_ID_ATTR) === id) {
-    existing.textContent = ''
+    // Keep the existing badge so click listeners and open detail panels survive
+    // the 200 ms DOM reconciliation tick.
     return existing
   }
   existing?.remove()
@@ -234,6 +252,12 @@ function renderBadge(cell: HTMLElement, id: string): HTMLElement {
 /** The three probability bars — one per class, fill = probability. */
 function renderBars(cell: HTMLElement, id: string, r: ScoreResult): void {
   const badge = renderBadge(cell, id)
+  // Bars for this id are already rendered; rebuilding them every tick would
+  // flicker and destroy the click-through detail panel.
+  if (badge.querySelector(`[${BAR_ATTR}]`)) {
+    ensureDetail(badge, r)
+    return
+  }
   for (const cls of CLASS_IDS) {
     const p = r.probabilities[cls]
     const row = document.createElement('div')
@@ -251,6 +275,7 @@ function renderBars(cell: HTMLElement, id: string, r: ScoreResult): void {
     value.textContent = p.toFixed(3)
     value.style.cssText = 'text-align:right;font-variant-numeric:tabular-nums;font-size:.9em'
     row.append(label, track, value)
+    row.setAttribute(BAR_ATTR, '')
     badge.appendChild(row)
   }
   ensureDetail(badge, r)
@@ -263,7 +288,8 @@ function renderError(cell: HTMLElement, id: string, message: string): void {
 
 /** Toggle the click-through detail panel showing exactly what the model said. */
 function ensureDetail(badge: HTMLElement, r: ScoreResult): void {
-  if (badge.querySelector(`[${DETAIL_ATTR}]`)) return
+  if (badge.getAttribute(DETAIL_LISTENER_ATTR)) return
+  badge.setAttribute(DETAIL_LISTENER_ATTR, '')
   badge.addEventListener('click', (e) => {
     e.stopPropagation()
     e.preventDefault()
@@ -285,7 +311,7 @@ function ensureDetail(badge: HTMLElement, r: ScoreResult): void {
       `<strong>probabilities</strong>: ${CLASS_IDS.map((c) => `${c} ${r.probabilities[c].toFixed(3)}`).join(', ')}`,
       `<strong>dominant</strong>: ${dominant}`,
       `<strong>model</strong>: ${escapeHtml(r.modelName)}`,
-      `<strong>prompt</strong>: ${r.promptVersion} — <strong>taxonomy</strong>: ${r.taxonomyVersion}`,
+      `<strong>prompt</strong>: ${escapeHtml(r.promptVersion)} — <strong>taxonomy</strong>: ${escapeHtml(r.taxonomyVersion)}`,
     ].join('<br>')
     badge.appendChild(detail)
   })
