@@ -14,7 +14,8 @@ describe('badgeFor', () => {
   it('shows the download percentage as a badge while loading', () => {
     expect(badgeFor(status('loading', 0))).toEqual({ text: '...', color: '#f5a623' })
     expect(badgeFor(status('loading', 0.37))).toEqual({ text: '37%', color: '#f5a623' })
-    expect(badgeFor(status('loading', 0.995))).toEqual({ text: '100%', color: '#f5a623' })
+    expect(badgeFor(status('loading', 0.995))).toEqual({ text: '99%', color: '#f5a623' })
+    expect(badgeFor(status('loading', 0.999))).toEqual({ text: '99%', color: '#f5a623' })
     expect(badgeFor(status('loading', 1))).toEqual({ text: '100%', color: '#f5a623' })
   })
 

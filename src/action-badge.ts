@@ -13,7 +13,7 @@ export function badgeFor(status: ModelStatus): BadgeSpec | null {
   if (status.phase === 'loading') {
     const pct =
       status.progress !== undefined && status.progress > 0
-        ? Math.round(status.progress * 100)
+        ? Math.floor(status.progress * 100)
         : null
     return {
       text: pct === null ? '...' : `${pct}%`,
