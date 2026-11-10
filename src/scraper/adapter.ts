@@ -90,9 +90,9 @@ function scheduleTick(): void {
 function tick(): void {
   // Home timelines only (For You + Following): the v1 surface, owner-set.
   if (!location.pathname.startsWith('/home')) return
-  // Walk every timeline cell: scoreable posts get bars (cached or queued);
-  // skipped posts get a reason marker; unscored posts show nothing until
-  // their score lands. Scrolling is never blocked — the queue bounds work.
+  // Walk every timeline cell: scoreable posts get bars or a pending badge;
+  // skipped posts get a reason marker. Scrolling is never blocked — the queue
+  // bounds work.
   for (const cell of document.querySelectorAll<HTMLElement>(S.TIMELINE_CELL)) {
     const candidate = extractCandidate(cell)
     if (!candidate) {
@@ -117,8 +117,9 @@ function tick(): void {
       errored.delete(candidate.id)
       errored.set(candidate.id, message)
       renderError(cell, candidate.id, message)
-    } else if (!queue.has(candidate.id)) {
-      queue.submit(candidate.id, judgedText(candidate))
+    } else {
+      renderPending(cell, candidate.id)
+      if (!queue.has(candidate.id)) queue.submit(candidate.id, judgedText(candidate))
     }
   }
 }
@@ -254,6 +255,12 @@ function renderBadge(cell: HTMLElement, id: string): HTMLElement {
   return badge
 }
 
+/** Keep queued, in-flight, and backlog-dropped posts visibly pending. */
+function renderPending(cell: HTMLElement, id: string): void {
+  const badge = renderBadge(cell, id)
+  if (badge.textContent !== 'aislop: preparing…') badge.textContent = 'aislop: preparing…'
+}
+
 /** The three probability bars — one per class, fill = probability. */
 function renderBars(cell: HTMLElement, id: string, r: ScoreResult): void {
   const badge = renderBadge(cell, id)
@@ -293,8 +300,8 @@ function renderError(cell: HTMLElement, id: string, message: string): void {
 
 /** Toggle the click-through detail panel showing exactly what the model said. */
 function ensureDetail(badge: HTMLElement, r: ScoreResult): void {
-  if (badge.getAttribute(DETAIL_LISTENER_ATTR)) return
-  badge.setAttribute(DETAIL_LISTENER_ATTR, '')
+  if (badge.hasAttribute(DETAIL_LISTENER_ATTR)) return
+  badge.setAttribute(DETAIL_LISTENER_ATTR, '1')
   badge.addEventListener('click', (e) => {
     e.stopPropagation()
     e.preventDefault()
