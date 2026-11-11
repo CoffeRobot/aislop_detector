@@ -19,6 +19,10 @@ direction wins over both.
   default branch — `<n>` is the ticket's plan ID, not its GitHub number (see
   Ticket numbering). Skip the issue if it already carries `status: claimed`,
   `status: has-pr`, or `status: done`, or if an open PR references it.
+- The Orca workspace hosting the work is named after the ticket too: create it with
+  `--name issue-<n>` and `--issue <github-number>` (`orca worktree create` for fresh
+  workspaces, `orchestration worker-start` for workers), so workspace, branch, and PR
+  all say `issue-<n>`. Orca's generated sea-creature names are for non-ticket work only.
 - One issue = one branch = one PR. Reference the issue with `Fixes #<github-number>`
   in the PR body (GitHub's number is needed for auto-close; the ticket's name is its
   plan ID — see Ticket numbering).
