@@ -4,6 +4,18 @@
 upstream sources on this machine. They replace the previous demo-deployment
 vendored copy (wllama master, 2026-10-20 15:15 GMT).
 
+## Obsolescence update (2026-11-11)
+
+The swap-back condition below is **met**: `@wllama/wllama@3.13.0` reached npm on
+2026-11-08 and is d1-capable on a newer llama.cpp (`b12211-7d7f028` vs this
+build's `b11719-5aeac37`). Verified on the actual tarball (`npm pack`):
+`lfm2-d1` ×2, `lfm2-d1-omni` ×1, systemone ×2, decision glue ×4, `ggml-webgpu` ×2
+— same six feature markers as this build. This from-source path is therefore
+obsolete: retire it via `issue-16` (GitHub #35). Until that lands, this file
+remains the provenance of the shipped bytes; note the "Why built from source"
+section below quotes `npm view` output that was current at build time (2026-11-06,
+latest then was 3.8.1) and is kept for the historical record.
+
 ## Why built from source
 
 The published npm package is still not d1-capable:
