@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { CLASS_IDS, dominantClass, extractProbabilities } from '../src/decision/probabilities'
+import {
+  CLASS_COLORS,
+  CLASS_IDS,
+  dominantClass,
+  extractProbabilities,
+} from '../src/decision/probabilities'
 
 const spikeAnswer = {
   type: 'choice',
@@ -94,6 +99,18 @@ describe('extractProbabilities', () => {
 
   it('covers exactly the three TAXONOMY v1 class tokens', () => {
     expect(CLASS_IDS).toEqual(['ai_slop', 'rubbish', 'genuine'])
+  })
+})
+
+describe('CLASS_COLORS', () => {
+  it('has one color entry per class token', () => {
+    expect(Object.keys(CLASS_COLORS).sort()).toEqual([...CLASS_IDS].sort())
+  })
+
+  it('uses non-empty hex colors', () => {
+    for (const id of CLASS_IDS) {
+      expect(CLASS_COLORS[id]).toMatch(/^#[0-9a-fA-F]{6}$/)
+    }
   })
 })
 

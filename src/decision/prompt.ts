@@ -5,7 +5,7 @@
 // (spike/spike_common.py) — the spike's validated per-class probabilities came
 // from this wording. When definitions change: update TAXONOMY.md, copy the new
 // wording here, bump TAXONOMY_VERSION and PROMPT_VERSION, add the new class to
-// probabilities.ts, and add a bar color.
+// probabilities.ts, and add a bar color in probabilities.ts (CLASS_COLORS).
 
 import type { ClassId } from './probabilities'
 
